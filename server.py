@@ -143,7 +143,15 @@ class ClientHandler(Stoppable):
                     msgs = []
                     msg = socket.recv(MESSAGE_SIZE)
                     if msg:
-                        self.parse_message(msg)
+                        (row,column,txt) = self.parse_message(msg)
+                        if txt.startswith('enter'):
+                            print "received enter in %d:%d" % (row, column)
+                            self.wordsmith.setEnter(row-1, column-1)
+                        else:
+                            char = txt[0][0]
+                            print "received char %s in %s:%s" % (char,str(row),str(column))
+                            self.wordsmith.setChar(row-1,column,char)
+                        self.server.notify_all_clients(self, msg)  # send msg to others
                     else:
                         client_shutdown = True
                 if self.shutdown or client_shutdown:
@@ -155,20 +163,10 @@ class ClientHandler(Stoppable):
     def parse_message(self,message):
         identifier = message[0]
         if identifier == INS_CHAR:
-            msg_copy = message
             message = message[1:]
             row = int(message[:IND_SIZE])
             column = int(message[IND_SIZE:2*IND_SIZE])
-            txt = message[2*IND_SIZE:]
-            print "txt: " + txt
-            if txt.startswith('enter'):
-                print "received enter in %d:%d" % (row, column)
-                self.wordsmith.setEnter(row-1, column-1)
-            else:
-                char = txt[0][0]
-                print "received char %s in %s:%s" % (char,str(row),str(column))
-                self.wordsmith.setChar(row-1,column,char)
-            self.server.notify_all_clients(self, msg_copy)  # send msg to others
+            return (row,column,message[2*IND_SIZE:])
         else:
             print "unexpected!"
 
