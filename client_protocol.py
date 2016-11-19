@@ -5,7 +5,7 @@ def send_char(socket,row,col,char):
     p_row = pad_left(row,IND_SIZE)
     p_col = pad_left(col,IND_SIZE)
     msg = INS_CHAR + p_row + p_col + char
-
+    print "sent: " + msg
     socket.send(pad_right(msg,MESSAGE_SIZE))
 
 def retr_text(socket):

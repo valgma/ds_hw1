@@ -3,13 +3,15 @@ import Tkinter as tk
 
 from socket import socket, AF_INET, SOCK_STREAM, SHUT_WR, SHUT_RD
 from socket import error as soc_error
+from threading import Thread
 
-from common import make_logger
+from common import make_logger, INS_CHAR, IND_SIZE
 from client_protocol import send_char, retr_text
 LOG = make_logger()
 
 class Application(tk.Frame):
     sock = None
+    text = None
     def __init__(self,server,master=None):
         tk.Frame.__init__(self,master)
         self.grid()
@@ -18,8 +20,13 @@ class Application(tk.Frame):
         self.bindKeys()
         self.retrieveText()
 
+        self.resp_handler = ClientRespHandler(self.text, self.sock)
+        self.resp_handler.setDaemon(True) # kill it when app closed
+        self.resp_handler.start()
+
     def bindKeys(self):
         self.text.bind("<Key>",self.key_press)
+        self.text.bind("<Return>", self.enter_press)
         self.pack()
 
     def createWidgets(self):
@@ -34,6 +41,7 @@ class Application(tk.Frame):
         self.text.grid()
 
     def key_press(self,event):
+        print "MUU key"
         ind =  self.text.index(tk.INSERT).split(".")
         row = ind[0]
         col = ind[1]
@@ -43,15 +51,22 @@ class Application(tk.Frame):
         except:
             return
 
+    def enter_press(self,event):
+        print "ENTERERERER"
+        ind =  self.text.index(tk.INSERT).split(".")
+        row = ind[0]
+        col = ind[1]
+        try:
+            send_char(self.sock,row,col,'enter')
+        except:
+            return
+
     def retrieveText(self):
         text = retr_text(self.sock)
         self.text.config(state=tk.NORMAL,bg="white")
         self.text.delete(1.0,tk.END)
         self.text.insert(0.0,text)
         return
-
-
-
 
     def connect(self,server):
         LOG.info("Connecting to %s." % str(server))
@@ -64,14 +79,48 @@ class Application(tk.Frame):
 
     def disconnect(self):
         try:
-            sock.fileno()
+            self.sock.fileno()
         except:
             return
         LOG.info("Disconnected from server.")
-        sock.close()
+        self.sock.close()
 
 
-server = (("127.0.0.1",7777))
+class ClientRespHandler(Thread):
+    text = None
+    socket = None
+
+    def __init__(self, text, socket):
+        super(ClientRespHandler, self).__init__()
+        self.text = text
+        self.socket = socket
+        print "Started new listener"
+
+    def run(self):
+        while True:
+            msg = retr_text(self.socket)
+            self.parse_message(msg)
+
+    def parse_message(self, message):
+        identifier = message[0]
+        if identifier == INS_CHAR:
+            message = message[1:]
+            row = int(message[:IND_SIZE])
+            col = int(message[IND_SIZE:2*IND_SIZE])
+            txt = message[2*IND_SIZE:]
+            if txt.startswith('enter'):
+                char = '\n'
+            else:
+                char = txt[0][0]
+            print "received char %s in %s:%s" % (char,str(row),str(col))
+            self.text.insert(str(row)+'.'+str(col), char)
+        else:
+            print "unexpected!"
+            print "msg: " + message
+
+
+
+server = ("127.0.0.1", 7777)
 app = Application(server)
 app.master.title("Minu jama")
 app.mainloop()

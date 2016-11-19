@@ -30,7 +30,7 @@ class Server:
                 LOG.info("Waiting for clients.")
                 client_socket,source = self.sock.accept()
                 LOG.debug("New client connected from %s:%d" % source)
-                c = ClientHandler(client_socket,source,self.ws)
+                c = ClientHandler(client_socket,source,self.ws, self)
                 self.handlers.append(c)
                 c.handle()
                 sleep(1)
@@ -50,6 +50,11 @@ class Server:
     def disconnect(self):
         self.sock.close()
 
+    def notify_all_clients(self, author, msg):
+        for handler in self.handlers:
+            if handler != author:
+                handler.send_update(msg)
+
 class Stoppable(Thread):
     shutdown = False
     def stop(self):
@@ -66,6 +71,10 @@ class Wordsmith(Stoppable):
         except IndexError:
             if col == len(self.text[row]):
                 self.text[row].append(char)
+
+    def setEnter(self, row, col):
+        new_row = self.text[row][col:]
+        self.text.insert(row + 1, new_row)
 
     def run(self):
         self.displayText()
@@ -87,9 +96,11 @@ class ClientHandler(Stoppable):
     client_socket = None
     client_addr = None
     wordsmith = None
+    server = None
 
-    def __init__(self,cs,ca,ws):
+    def __init__(self,cs,ca,ws, server):
         Thread.__init__(self)
+        self.server = server
         self.client_socket = cs
         self.client_addr = ca
         self.wordsmith = ws
@@ -108,6 +119,11 @@ class ClientHandler(Stoppable):
                 LOG.info("Successfully sent client the current text.")
         except soc_error as e:
             print "woops!"
+
+    def send_update(self, msg):
+        msg = pad_left(str(len(msg)) ,MESSAGE_SIZE) + msg
+        print "sent: " + msg
+        self.client_socket.sendall(msg)
 
     def run(self):
         self.__handle()
@@ -139,12 +155,20 @@ class ClientHandler(Stoppable):
     def parse_message(self,message):
         identifier = message[0]
         if identifier == INS_CHAR:
+            msg_copy = message
             message = message[1:]
             row = int(message[:IND_SIZE])
             column = int(message[IND_SIZE:2*IND_SIZE])
-            char = message[2*IND_SIZE:][0][0]
-            print "received char %s in %s:%s" % (char,str(row),str(column))
-            self.wordsmith.setChar(row-1,column,char)
+            txt = message[2*IND_SIZE:]
+            print "txt: " + txt
+            if txt.startswith('enter'):
+                print "received enter in %d:%d" % (row, column)
+                self.wordsmith.setEnter(row-1, column-1)
+            else:
+                char = txt[0][0]
+                print "received char %s in %s:%s" % (char,str(row),str(column))
+                self.wordsmith.setChar(row-1,column,char)
+            self.server.notify_all_clients(self, msg_copy)  # send msg to others
         else:
             print "unexpected!"
 
