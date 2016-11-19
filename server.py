@@ -90,13 +90,6 @@ class Wordsmith(Stoppable):
     def __init__(self):
         Thread.__init__(self)
 
-    def setChar(self,row,col,char):
-        try:
-            self.text[row][col] = char
-        except IndexError:
-            if col == len(self.text[row]):
-                self.text[row].append(char)
-
     def in_char(self,row,col,txt):
         if txt.startswith('enter'):
             new_row = self.text[row][col-1:]
