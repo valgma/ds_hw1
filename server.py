@@ -92,8 +92,8 @@ class Wordsmith(Stoppable):
 
     def in_char(self,row,col,txt):
         if txt.startswith('enter'):
-            new_row = self.text[row][col-1:]
-            self.text.insert(row + 1, (new_row,Lock(),""))
+            new_row_content = self.text[row][0][col:]
+            self.text.insert(row + 1, (new_row_content,Lock(),""))
         else:
             char = txt[0][0]
             self.text[row][0].insert(col,char)
