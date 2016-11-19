@@ -116,10 +116,41 @@ class Wordsmith(Stoppable):
         Thread.__init__(self)
 
     def in_char(self,row,col,txt,src):
+        line = self.text[row][0]
+        lock = self.text[row][1]
+        timer = self.text[row][2]
+
         if txt.startswith('enter'):
             new_row_content = self.text[row][0][col:]
-            self.text.insert(row + 1, [new_row_content,Lock(),None])
-            return True
+            if lock.acquire(False):
+                self.text[row][0] = self.text[row][0][:col]
+
+                new_lock = Lock()
+                old_row_timer = TimedLock(lock,src,row,self)
+                new_timer = TimedLock(new_lock,src,row + 1,self)
+                self.text[row][2] = old_row_timer
+
+                new_timer.start()
+                old_row_timer.start()
+                new_lock.acquire(False)
+
+                self.text.insert(row + 1, [new_row_content,new_lock,new_timer])
+                self.inc_timer_indices(row + 2)
+
+                return True
+            elif timer.author == src:
+                self.text[row][0] = self.text[row][0][:col]
+
+                timer.poke()
+                new_lock = Lock()
+                new_timer = TimedLock(new_lock,src,row + 1,self)
+                new_timer.start()
+                new_lock.acquire(False)
+
+                self.text.insert(row + 1, [new_row_content,new_lock,new_timer])
+                self.inc_timer_indices(row + 2)
+
+                return True
         else:
             char = txt[0][0]
             (line,lock,timer) = (self.text[row][0],self.text[row][1],self.text[row][2])
@@ -136,6 +167,11 @@ class Wordsmith(Stoppable):
                 return True
         return False
 
+    def inc_timer_indices(self,n):
+        for i in range(n,len(self.text)):
+            timer = self.text[i][2]
+            if timer:
+                timer.lineno += 1
 
 
 
@@ -193,7 +229,7 @@ class ClientHandler(Stoppable):
 
     def send_update(self, msg):
         msg = pad_left(str(len(msg)) ,MESSAGE_SIZE) + msg
-        print "sent: " + msg
+        #print "sent: " + msg
         self.client_socket.sendall(msg)
 
     def run(self):
