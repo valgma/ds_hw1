@@ -71,6 +71,18 @@ class Wordsmith(Stoppable):
             if col == len(self.text[row]):
                 self.text[row].append(char)
 
+    def in_char(self,row,col,txt):
+        if txt.startswith('enter'):
+            new_row = self.text[row][col-1:]
+            self.text.insert(row + 1, new_row)
+        else:
+            char = txt[0][0]
+            try:
+                self.text[row][col] = char
+            except IndexError:
+                if col == len(self.text[row]):
+                    self.text[row].append(char)
+
     def setEnter(self, row, col):
         new_row = self.text[row][col:]
         self.text.insert(row + 1, new_row)
@@ -147,19 +159,12 @@ class ClientHandler(Stoppable):
                     msg = socket.recv(MESSAGE_SIZE)
                     if msg:
                         (row,column,txt) = self.parse_message(msg)
-                        if txt.startswith('enter'):
-                            print "received enter in %d:%d" % (row, column)
-                            self.wordsmith.setEnter(row-1, column-1)
-                        else:
-                            char = txt[0][0]
-                            print "received char %s in %s:%s" % (char,str(row),str(column))
-                            self.wordsmith.setChar(row-1,column,char)
+                        self.wordsmith.in_char(row-1,column,txt)
                         self.wordsmith.notify_all_clients(self, msg)  # send msg to others
                     else:
                         client_shutdown = True
                 if self.shutdown or client_shutdown:
                     break
-                print "not blocking.."
         finally:
             self.disconnect()
 
