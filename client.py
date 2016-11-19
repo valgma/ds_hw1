@@ -71,7 +71,7 @@ class Application(tk.Frame):
         sock.close()
 
 
-server = (("82.131.111.147",7777))
+server = (("127.0.0.1",7777))
 app = Application(server)
 app.master.title("Minu jama")
 app.mainloop()

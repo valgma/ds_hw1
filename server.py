@@ -156,4 +156,4 @@ class ClientHandler(Stoppable):
         self.shutdown = True
 
 
-serv = Server(("192.168.0.10",7777))
+serv = Server(("127.0.0.1",7777))
