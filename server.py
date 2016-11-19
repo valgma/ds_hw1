@@ -77,6 +77,31 @@ class FileManager(Thread):
     def addSmith(self,ws):
         self.smiths.append(ws)
 
+class TimedLock(Thread):
+    def __init__(self,lock,auth,nr,ws):
+        Thread.__init__(self)
+        self.stopped = Event()
+        self.linelock = lock
+        self.author = auth
+        self.lineno = nr
+        self.wordsmith = ws
+
+    def run(self):
+        while 1:
+            sleep(4)
+            if not self.stopped.is_set():
+                LOG.debug("Line lock released on %d." % self.lineno)
+                msg = self.wordsmith.create_block_msg(str(self.lineno+1),False)
+                self.wordsmith.notify_all_clients(self.author,msg)
+                self.linelock.release()
+                break
+            else:
+                self.stopped.clear()
+
+    def poke(self):
+        self.stopped.set()
+
+
 class Stoppable(Thread):
     shutdown = False
     def stop(self):
@@ -84,19 +109,35 @@ class Stoppable(Thread):
 
 class Wordsmith(Stoppable):
     filename = "first.txt"
-    text = [([''],Lock(),"")]
+    text = [[[''],Lock(),None]]
     handlers = []
 
     def __init__(self):
         Thread.__init__(self)
 
-    def in_char(self,row,col,txt):
+    def in_char(self,row,col,txt,src):
         if txt.startswith('enter'):
             new_row_content = self.text[row][0][col:]
-            self.text.insert(row + 1, (new_row_content,Lock(),""))
+            self.text.insert(row + 1, [new_row_content,Lock(),None])
+            return True
         else:
             char = txt[0][0]
-            self.text[row][0].insert(col,char)
+            (line,lock,timer) = (self.text[row][0],self.text[row][1],self.text[row][2])
+            if lock.acquire(False):
+                LOG.debug("Lock on line %s was open, now grabbed" % str(row+1))
+                self.text[row][2] = TimedLock(lock,src,row,self)
+                self.text[row][0].insert(col,char)
+                self.text[row][2].start()
+                return True
+            elif timer.author == src:
+                LOG.debug("Line %s lock owner is editing" % str(row+1))
+                timer.poke()
+                self.text[row][0].insert(col,char)
+                return True
+        return False
+
+
+
 
     def run(self):
         self.displayText()
@@ -175,9 +216,9 @@ class ClientHandler(Stoppable):
                     if msg:
                         (row,column,txt) = self.parse_message(msg)
                         blockmsg = self.wordsmith.create_block_msg(str(row),True)
-                        self.wordsmith.in_char(row-1,column,txt)
-                        self.wordsmith.notify_all_clients(self, msg)  # send msg to others
-                        self.wordsmith.notify_all_clients(self, blockmsg)
+                        if self.wordsmith.in_char(row-1,column,txt,self):
+                            self.wordsmith.notify_all_clients(self, msg)  # send msg to others
+                            self.wordsmith.notify_all_clients(self, blockmsg)
                     else:
                         client_shutdown = True
                 if self.shutdown or client_shutdown:
