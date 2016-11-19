@@ -9,8 +9,9 @@ LOG = make_logger()
 
 class Server:
     sock = socket(AF_INET,SOCK_STREAM)
-    handlers = []
     ws = None
+    handlers = []
+
     def __init__(self,server):
         self.ws = Wordsmith()
         self.ws.start()
@@ -30,7 +31,7 @@ class Server:
                 LOG.info("Waiting for clients.")
                 client_socket,source = self.sock.accept()
                 LOG.debug("New client connected from %s:%d" % source)
-                c = ClientHandler(client_socket,source,self.ws, self)
+                c = ClientHandler(client_socket,source,self.ws)
                 self.handlers.append(c)
                 c.handle()
                 sleep(1)
@@ -50,10 +51,7 @@ class Server:
     def disconnect(self):
         self.sock.close()
 
-    def notify_all_clients(self, author, msg):
-        for handler in self.handlers:
-            if handler != author:
-                handler.send_update(msg)
+
 
 class Stoppable(Thread):
     shutdown = False
@@ -62,6 +60,7 @@ class Stoppable(Thread):
 
 class Wordsmith(Stoppable):
     text = [['']]
+    handlers = []
     def __init__(self):
         Thread.__init__(self)
 
@@ -89,6 +88,11 @@ class Wordsmith(Stoppable):
     def content(self):
         return "\n".join(map(lambda x : "".join(x),self.text))
 
+    def notify_all_clients(self, author, msg):
+        for handler in self.handlers:
+            if handler != author:
+                handler.send_update(msg)
+
 
 
 class ClientHandler(Stoppable):
@@ -96,15 +100,14 @@ class ClientHandler(Stoppable):
     client_socket = None
     client_addr = None
     wordsmith = None
-    server = None
 
-    def __init__(self,cs,ca,ws, server):
+    def __init__(self,cs,ca,ws):
         Thread.__init__(self)
-        self.server = server
         self.client_socket = cs
         self.client_addr = ca
         self.wordsmith = ws
         self.send_initmsg()
+        self.wordsmith.handlers.append(self)
 
     def send_initmsg(self):
         LOG.info("Sending client current text")
@@ -151,7 +154,7 @@ class ClientHandler(Stoppable):
                             char = txt[0][0]
                             print "received char %s in %s:%s" % (char,str(row),str(column))
                             self.wordsmith.setChar(row-1,column,char)
-                        self.server.notify_all_clients(self, msg)  # send msg to others
+                        self.wordsmith.notify_all_clients(self, msg)  # send msg to others
                     else:
                         client_shutdown = True
                 if self.shutdown or client_shutdown:
@@ -171,6 +174,7 @@ class ClientHandler(Stoppable):
             print "unexpected!"
 
     def disconnect(self):
+        self.wordsmith.handlers.remove(self)
         self.client_socket.close()
         LOG.debug("Terminating client %s:%d" % self.client_addr)
 
