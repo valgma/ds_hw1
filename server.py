@@ -3,7 +3,7 @@ from socket import socket, AF_INET, SOCK_STREAM
 from socket import error as soc_error
 from time import sleep
 from common import make_logger, MESSAGE_SIZE, INS_CHAR, IND_SIZE, pad_left, pad_right
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 import select
 import os
 LOG = make_logger()
@@ -84,7 +84,7 @@ class Stoppable(Thread):
 
 class Wordsmith(Stoppable):
     filename = "first.txt"
-    text = [['']]
+    text = [([''],Lock(),"")]
     handlers = []
 
     def __init__(self):
@@ -93,14 +93,10 @@ class Wordsmith(Stoppable):
     def in_char(self,row,col,txt):
         if txt.startswith('enter'):
             new_row = self.text[row][col-1:]
-            self.text.insert(row + 1, new_row)
+            self.text.insert(row + 1, (new_row,Lock(),""))
         else:
             char = txt[0][0]
-            self.text[row].insert(col,char)
-
-    def setEnter(self, row, col):
-        new_row = self.text[row][col:]
-        self.text.insert(row + 1, new_row)
+            self.text[row][0].insert(col,char)
 
     def run(self):
         self.displayText()
@@ -113,7 +109,8 @@ class Wordsmith(Stoppable):
             sleep(4)
 
     def content(self):
-        return "\n".join(map(lambda x : "".join(x),self.text))
+        rows = map(lambda x: x[0],self.text)
+        return "\n".join(map(lambda x : "".join(x),rows))
 
     def notify_all_clients(self, author, msg):
         for handler in self.handlers:
