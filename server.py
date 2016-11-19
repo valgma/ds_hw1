@@ -103,11 +103,7 @@ class Wordsmith(Stoppable):
             self.text.insert(row + 1, new_row)
         else:
             char = txt[0][0]
-            try:
-                self.text[row][col] = char
-            except IndexError:
-                if col == len(self.text[row]):
-                    self.text[row].append(char)
+            self.text[row].insert(col,char)
 
     def setEnter(self, row, col):
         new_row = self.text[row][col:]
