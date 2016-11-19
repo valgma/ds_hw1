@@ -137,6 +137,6 @@ class ClientRespHandler(Thread):
 
 server = ("127.0.0.1", 7777)
 app = Application(server)
-app.master.title("Minu jama")
+app.master.title("Collaborative text editor")
 app.mainloop()
 app.disconnect()
