@@ -3,18 +3,25 @@ from socket import socket, AF_INET, SOCK_STREAM
 from socket import error as soc_error
 from time import sleep
 from common import make_logger, MESSAGE_SIZE, INS_CHAR, IND_SIZE, pad_left, pad_right
-from threading import Thread
+from threading import Thread, Event
 import select
+import os
 LOG = make_logger()
 
 class Server:
     sock = socket(AF_INET,SOCK_STREAM)
     ws = None
     handlers = []
+    fm = None
+    stopFlag = None
 
     def __init__(self,server):
         self.ws = Wordsmith()
         self.ws.start()
+        self.stopFlag = Event()
+        self.fm = FileManager(self.stopFlag)
+        self.fm.addSmith(self.ws)
+        self.fm.start()
         try:
             LOG.info("Trying to initialize server socet.")
             self.sock.bind(server)
@@ -40,6 +47,7 @@ class Server:
             LOG.info("Received CTRL-C, shutting down..")
             self.disconnect()
         finally:
+            self.stopFlag.set()
             self.disconnect()
             LOG.debug("Telling the threads to kill themselves.")
             map(lambda x: x.stop(), self.handlers)
@@ -51,7 +59,23 @@ class Server:
     def disconnect(self):
         self.sock.close()
 
+class FileManager(Thread):
+    smiths = []
+    #http://stackoverflow.com/questions/12435211/python-threading-timer-repeat-function-every-n-seconds#12435256
+    def __init__(self,event):
+        Thread.__init__(self)
+        self.stopped = event
 
+    def run(self):
+        while not self.stopped.wait(10):
+            for smith in self.smiths:
+                pth = os.path.join("text",smith.filename)
+                f = open(pth,"w")
+                f.write(smith.content())
+                f.close()
+
+    def addSmith(self,ws):
+        self.smiths.append(ws)
 
 class Stoppable(Thread):
     shutdown = False
@@ -59,8 +83,10 @@ class Stoppable(Thread):
         self.shutdown = True
 
 class Wordsmith(Stoppable):
+    filename = "first.txt"
     text = [['']]
     handlers = []
+
     def __init__(self):
         Thread.__init__(self)
 
