@@ -5,13 +5,14 @@ from socket import socket, AF_INET, SOCK_STREAM, SHUT_WR, SHUT_RD
 from socket import error as soc_error
 from threading import Thread
 
-from common import make_logger, INS_CHAR, IND_SIZE
+from common import make_logger, INS_CHAR, IND_SIZE, BLOCK_LINE, UNBLOCK_LINE
 from client_protocol import send_char, retr_text
 LOG = make_logger()
 
 class Application(tk.Frame):
     sock = None
     text = None
+
     def __init__(self,server,master=None):
         tk.Frame.__init__(self,master)
         self.grid()
@@ -34,6 +35,7 @@ class Application(tk.Frame):
         self.quitButton.grid()
 
         self.text = tk.Text(self)
+        self.text.tag_config("blocked", foreground="#ff0000", background="#000000")
         self.text.insert("0.0","Retrieving content from server..")
 
         self.text.config(bg="#d6d8d8",state=tk.DISABLED)
@@ -114,9 +116,22 @@ class ClientRespHandler(Thread):
                 char = txt[0][0]
             print "received char %s in %s:%s" % (char,str(row),str(col))
             self.text.insert(str(row)+'.'+str(col), char)
+        elif identifier == BLOCK_LINE or identifier == UNBLOCK_LINE:
+            message = message[1:]
+            lineno = str(int(message))
+            blocking = identifier == BLOCK_LINE
+            self.toggle_block(lineno,blocking)
         else:
             print "unexpected!"
             print "msg: " + message
+
+    def toggle_block(self,lineno,blocking):
+        line_begin = lineno+".0"
+        line_end = lineno+".end"
+        if blocking:
+            self.text.tag_add("blocked",line_begin,line_end)
+        else:
+            self.text.tag_remove("blocked",line_begin, line_end)
 
 
 

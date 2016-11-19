@@ -2,7 +2,7 @@
 from socket import socket, AF_INET, SOCK_STREAM
 from socket import error as soc_error
 from time import sleep
-from common import make_logger, MESSAGE_SIZE, INS_CHAR, IND_SIZE, pad_left, pad_right
+from common import make_logger, MESSAGE_SIZE, INS_CHAR, IND_SIZE, pad_left, pad_right, BLOCK_LINE, UNBLOCK_LINE
 from threading import Thread, Event, Lock
 import select
 import os
@@ -117,7 +117,10 @@ class Wordsmith(Stoppable):
             if handler != author:
                 handler.send_update(msg)
 
-
+    def create_block_msg(self,lineno,blocking):
+        m = BLOCK_LINE if blocking else UNBLOCK_LINE
+        m += pad_left(lineno,MESSAGE_SIZE-1)
+        return m
 
 class ClientHandler(Stoppable):
     shutdown = False
@@ -171,8 +174,10 @@ class ClientHandler(Stoppable):
                     msg = socket.recv(MESSAGE_SIZE)
                     if msg:
                         (row,column,txt) = self.parse_message(msg)
+                        blockmsg = self.wordsmith.create_block_msg(str(row),True)
                         self.wordsmith.in_char(row-1,column,txt)
                         self.wordsmith.notify_all_clients(self, msg)  # send msg to others
+                        self.wordsmith.notify_all_clients(self, blockmsg)
                     else:
                         client_shutdown = True
                 if self.shutdown or client_shutdown:
