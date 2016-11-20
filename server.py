@@ -151,6 +151,31 @@ class Wordsmith(Stoppable):
                 self.inc_timer_indices(row + 2)
 
                 return True
+        elif txt.startswith('backspace'):
+            if lock.acquire(False):
+                LOG.debug("Lock on line %s was open, now grabbed" % str(row+1))
+                if col > 0:
+                    self.text[row][2] = TimedLock(lock,src,row,self)
+                    line.pop(col - 1)
+                    self.text[row][2].start()
+                elif row > 0:
+                    self.text.pop(row)
+                    self.text[row-1][0].extend(line)
+                    self.text[row-1][2] = TimedLock(lock,src,row-1,self)
+                    self.text[row-1][2].start()
+                return True
+            elif timer.author == src:
+                LOG.debug("Line %s lock owner is editing" % str(row+1))
+                timer.poke()
+                if col > 0:
+                    line.pop(col - 1)
+                elif row > 0:
+                    print "LINE:", line
+                    self.text.pop(row)
+                    self.text[row-1][0].extend(line)
+                    self.text[row-1][2] = TimedLock(lock,src,row-1,self)
+                    self.text[row-1][2].start()
+                return True
         else:
             char = txt[0][0]
             (line,lock,timer) = (self.text[row][0],self.text[row][1],self.text[row][2])

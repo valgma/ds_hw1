@@ -28,6 +28,8 @@ class Application(tk.Frame):
     def bindKeys(self):
         self.text.bind("<Key>",self.key_press)
         self.text.bind("<Return>", self.enter_press)
+        self.text.bind("<BackSpace>", self.bs_press)
+        self.text.bind("<Delete>", self.del_press)
         self.pack()
 
     def createWidgets(self):
@@ -60,6 +62,28 @@ class Application(tk.Frame):
         col = ind[1]
         try:
             send_char(self.sock,row,col,'enter')
+        except:
+            return
+
+    def bs_press(self,event):
+        ind =  self.text.index(tk.INSERT).split(".")
+        row = ind[0]
+        col = ind[1]
+        print "BACKSPACE at %s.%s" % (row, col)
+        try:
+            if row != '1' or col != '0':
+                send_char(self.sock,row,col,'backspace')
+        except:
+            return
+
+    def del_press(self,event):
+        ind =  self.text.index(tk.INSERT+'+1c').split(".")
+        row = ind[0]
+        col = ind[1]
+        print "DEL at %s.%s" % (row, col)
+        try:
+            if (row+'.'+col) != self.text.index(tk.END):
+                send_char(self.sock,row,col,'backspace')
         except:
             return
 
@@ -110,6 +134,12 @@ class ClientRespHandler(Thread):
             row = int(message[:IND_SIZE])
             col = int(message[IND_SIZE:2*IND_SIZE])
             txt = message[2*IND_SIZE:]
+            if txt.startswith('backspace'):
+                if col > 0:
+                    self.text.delete('%d.%d' % (row, col-1))
+                elif row > 1:
+                    self.text.delete('%d.%s' % (row-1, tk.END))
+                return
             if txt.startswith('enter'):
                 char = '\n'
             else:

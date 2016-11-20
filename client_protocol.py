@@ -17,4 +17,5 @@ def retr_text(socket):
         else:
             return ""
     except (soc_error,ValueError):
-        return "Error when retrieving text from server"
+        print "Error when retrieving text from server"
+        raise Exception("paha paha")
