@@ -5,8 +5,8 @@ from socket import socket, AF_INET, SOCK_STREAM, SHUT_WR, SHUT_RD
 from socket import error as soc_error
 from threading import Thread
 
-from common import make_logger, INS_CHAR, IND_SIZE, BLOCK_LINE, UNBLOCK_LINE
-from client_protocol import send_char, retr_text
+from common import make_logger, INS_CHAR, IND_SIZE, BLOCK_LINE, UNBLOCK_LINE, GET_LINE
+from client_protocol import send_char, retr_text, ask_line
 LOG = make_logger()
 
 class Application(tk.Frame):
@@ -129,6 +129,7 @@ class ClientRespHandler(Thread):
 
     def parse_message(self, message):
         identifier = message[0]
+        print "message:", message
         if identifier == INS_CHAR:
             message = message[1:]
             row = int(message[:IND_SIZE])
@@ -151,6 +152,15 @@ class ClientRespHandler(Thread):
             lineno = str(int(message))
             blocking = identifier == BLOCK_LINE
             self.toggle_block(lineno,blocking)
+            # ask from server new line
+            if not blocking:
+                ask_line(self.socket, lineno)
+        elif identifier == GET_LINE:
+            message = message[1:]
+            row = int(message[:IND_SIZE])
+            txt = message[IND_SIZE:]
+            self.text.delete('%d.0' % row, '%d.end' % row)
+            self.text.insert('%d.0' % row, txt)
         else:
             print "unexpected!"
             print "msg: " + message

@@ -17,5 +17,6 @@ IND_SIZE = 32
 INS_CHAR = 'I'
 BLOCK_LINE = 'B'
 UNBLOCK_LINE = 'U'
+GET_LINE = 'G'
 
 RSP_OK = '0'

@@ -2,7 +2,7 @@
 from socket import socket, AF_INET, SOCK_STREAM
 from socket import error as soc_error
 from time import sleep
-from common import make_logger, MESSAGE_SIZE, INS_CHAR, IND_SIZE, pad_left, pad_right, BLOCK_LINE, UNBLOCK_LINE
+from common import make_logger, MESSAGE_SIZE, INS_CHAR, IND_SIZE, pad_left, pad_right, BLOCK_LINE, UNBLOCK_LINE, GET_LINE
 from threading import Thread, Event, Lock
 import select
 import os
@@ -214,6 +214,9 @@ class Wordsmith(Stoppable):
         rows = map(lambda x: x[0],self.text)
         return "\n".join(map(lambda x : "".join(x),rows))
 
+    def get_line(self, lineno):
+        return ''.join(self.text[lineno-1][0])
+
     def notify_all_clients(self, author, msg):
         for handler in self.handlers:
             if handler != author:
@@ -221,7 +224,13 @@ class Wordsmith(Stoppable):
 
     def create_block_msg(self,lineno,blocking):
         m = BLOCK_LINE if blocking else UNBLOCK_LINE
-        m += pad_left(lineno,MESSAGE_SIZE-1)
+        m += pad_left(lineno,IND_SIZE)
+        return m
+
+    def create_get_line_msg(self, lineno, line_content):
+        m = GET_LINE
+        m += pad_left(lineno,IND_SIZE)
+        m += line_content
         return m
 
 class ClientHandler(Stoppable):
@@ -275,11 +284,22 @@ class ClientHandler(Stoppable):
                     msgs = []
                     msg = socket.recv(MESSAGE_SIZE)
                     if msg:
-                        (row,column,txt) = self.parse_message(msg)
-                        blockmsg = self.wordsmith.create_block_msg(str(row),True)
-                        if self.wordsmith.in_char(row-1,column,txt,self):
-                            self.wordsmith.notify_all_clients(self, msg)  # send msg to others
-                            self.wordsmith.notify_all_clients(self, blockmsg)
+                        identifier = msg[0]
+                        message = msg[1:]
+                        row = int(message[:IND_SIZE])
+                        column = int(message[IND_SIZE:2*IND_SIZE])
+                        txt = message[2*IND_SIZE:]
+                        if identifier == INS_CHAR:
+                            # (row,column,txt) = self.parse_message(msg)
+                            blockmsg = self.wordsmith.create_block_msg(str(row),True)
+                            if self.wordsmith.in_char(row-1,column,txt,self):
+                                self.wordsmith.notify_all_clients(self, msg)  # send msg to others
+                                self.wordsmith.notify_all_clients(self, blockmsg)
+                        elif identifier == GET_LINE:
+                            line_content = self.wordsmith.get_line(row)
+                            get_line_msg = self.wordsmith.create_get_line_msg(str(row), line_content)
+                            print "sent: " + get_line_msg
+                            self.send_update(get_line_msg)
                     else:
                         client_shutdown = True
                 if self.shutdown or client_shutdown:
@@ -287,15 +307,15 @@ class ClientHandler(Stoppable):
         finally:
             self.disconnect()
 
-    def parse_message(self,message):
-        identifier = message[0]
-        if identifier == INS_CHAR:
-            message = message[1:]
-            row = int(message[:IND_SIZE])
-            column = int(message[IND_SIZE:2*IND_SIZE])
-            return (row,column,message[2*IND_SIZE:])
-        else:
-            print "unexpected!"
+    # def parse_message(self,message):
+    #     identifier = message[0]
+    #     if identifier == INS_CHAR:
+    #         message = message[1:]
+    #         row = int(message[:IND_SIZE])
+    #         column = int(message[IND_SIZE:2*IND_SIZE])
+    #         return (row,column,message[2*IND_SIZE:])
+    #     else:
+    #         print "unexpected!"
 
     def disconnect(self):
         self.wordsmith.handlers.remove(self)
