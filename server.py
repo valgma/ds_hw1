@@ -85,7 +85,7 @@ class Server:
             ws = Wordsmith(fname)
             self.fm.addSmith(ws)
             ws.set_content(content)
-            #ws.start #TODO: we only use this for debugging..
+            #ws.start() #TODO: we only use this for debugging..
             self.wordsmiths[fname] = ws
             return ws
         except IOError:
@@ -142,13 +142,12 @@ class Stoppable(Thread):
         self.shutdown = True
 
 class Wordsmith(Stoppable):
-    filename = "first.txt"
-    text = [[[''],Lock(),None]]
-    subscribers = []
-
     def __init__(self,name):
         Thread.__init__(self)
         self.filename = name
+        self.subscribers = []
+        self.text = [[[''],Lock(),None]]
+
 
     def set_content(self,content):
         txt = []
@@ -320,9 +319,12 @@ class Wordsmith(Stoppable):
 
     def displayText(self):
         while not self.shutdown:
-            #print "-----"
-            #print self.content()
-            #print "-----"
+            print "-----"
+            print self.content()
+            print "//Subscribers:"
+            print len(self.subscribers)
+            print "-----"
+
             sleep(4)
 
     def content(self):
