@@ -79,7 +79,7 @@ class FileManager(Thread):
     def addSmith(self,ws):
         self.smiths.append(ws)
 
-class TimedLock(Thread):
+class LineLockHolder(Thread):
     def __init__(self,lock,auth,nr,ws):
         Thread.__init__(self)
         self.stopped = Event()
@@ -92,7 +92,7 @@ class TimedLock(Thread):
         while 1:
             sleep(4)
             if not self.stopped.is_set():
-                LOG.debug("Line lock released on %d." % self.lineno)
+                LOG.debug("Line lock released on %d." % (self.lineno + 1))
                 # msg = self.wordsmith.create_block_msg(str(self.lineno+1),False)
                 msg = protocol.assemble_msg(UNBLOCK_LINE, self.lineno + 1, 0, 0)
                 self.wordsmith.notify_all_clients(self.author,msg)
@@ -124,13 +124,18 @@ class Wordsmith(Stoppable):
         timer = self.text[row][2]
 
         if txt.startswith('enter'):
+            # needs to return enter and 2 block messages
+            enter_msg = protocol.assemble_msg(INS_CHAR, row + 1, col, 'enter')
+            blockmsg1 = protocol.assemble_msg(BLOCK_LINE, row + 1, 0, 0)
+            blockmsg2 = protocol.assemble_msg(BLOCK_LINE, row + 2, 0, 0)
+
             new_row_content = self.text[row][0][col:]
             if lock.acquire(False):
                 self.text[row][0] = self.text[row][0][:col]
 
                 new_lock = Lock()
-                old_row_timer = TimedLock(lock,src,row,self)
-                new_timer = TimedLock(new_lock,src,row + 1,self)
+                old_row_timer = LineLockHolder(lock, src, row, self)
+                new_timer = LineLockHolder(new_lock, src, row + 1, self)
                 self.text[row][2] = old_row_timer
 
                 new_timer.start()
@@ -140,66 +145,130 @@ class Wordsmith(Stoppable):
                 self.text.insert(row + 1, [new_row_content,new_lock,new_timer])
                 self.inc_timer_indices(row + 2)
 
-                return True
+                return [enter_msg, blockmsg1, blockmsg2]
             elif timer.author == src:
                 self.text[row][0] = self.text[row][0][:col]
 
                 timer.poke()
                 new_lock = Lock()
-                new_timer = TimedLock(new_lock,src,row + 1,self)
+                new_timer = LineLockHolder(new_lock, src, row + 1, self)
                 new_timer.start()
                 new_lock.acquire(False)
 
                 self.text.insert(row + 1, [new_row_content,new_lock,new_timer])
                 self.inc_timer_indices(row + 2)
 
-                return True
+                return [enter_msg, blockmsg1, blockmsg2]
+
         elif txt.startswith('backspace'):
+            bs_msg = protocol.assemble_msg(INS_CHAR, row + 1, col, 'backspace')
+            blockmsg = protocol.assemble_msg(BLOCK_LINE, row + 1, 0, 0)
+
             if lock.acquire(False):
                 LOG.debug("Lock on line %s was open, now grabbed" % str(row+1))
+
                 if col > 0:
-                    self.text[row][2] = TimedLock(lock,src,row,self)
                     line.pop(col - 1)
+                    self.text[row][2] = LineLockHolder(lock, src, row, self)
                     self.text[row][2].start()
+
+                    return [bs_msg, blockmsg]
                 elif row > 0:
-                    self.text.pop(row)
-                    self.text[row-1][0].extend(line)
-                    self.text[row-1][2] = TimedLock(lock,src,row-1,self)
-                    self.text[row-1][2].start()
-                return True
+                    # need to check if we can modify prev line
+                    prev_line, prev_lock, prev_timer = self.text[row - 1]
+
+                    if prev_lock.acquire(False):
+                        LOG.debug("Lock on line %s was open, now grabbed" % str(row))
+                        self.text.pop(row)
+                        self.text[row - 1][0].extend(line)
+                        self.dec_timer_indices(row)
+
+                        self.text[row - 1][2] = LineLockHolder(lock, src, row - 1, self)
+                        self.text[row - 1][2].start()
+                    elif prev_timer.author == src:
+                        LOG.debug("Line %s lock owner is editing" % str(row))
+                        self.text.pop(row)
+                        self.text[row - 1][0].extend(line)
+                        self.dec_timer_indices(row)
+
+                        prev_timer.poke()
+                    else:
+                        # should send notice to author that it couldn't do it
+                        # basically author needs to insert enter
+                        msg_newline = protocol.assemble_msg(INS_CHAR, row, len(prev_line), 'enter')
+                        src.send_update(msg_newline)
+                        # also send others notice that its locked
+                        return [blockmsg]
+
+                    # now needs to send blockmsg about previous row
+                    blockmsg_prev = protocol.assemble_msg(BLOCK_LINE, row, 0, 0)
+                    return [bs_msg, blockmsg_prev]
             elif timer.author == src:
                 LOG.debug("Line %s lock owner is editing" % str(row+1))
-                timer.poke()
                 if col > 0:
                     line.pop(col - 1)
+                    timer.poke()
+
+                    return [bs_msg, blockmsg]
                 elif row > 0:
-                    print "LINE:", line
-                    self.text.pop(row)
-                    self.text[row-1][0].extend(line)
-                    self.text[row-1][2] = TimedLock(lock,src,row-1,self)
-                    self.text[row-1][2].start()
-                return True
+                    # need to check if we can modify prev line
+                    prev_line, prev_lock, prev_timer = self.text[row - 1]
+
+                    if prev_lock.acquire(False):
+                        LOG.debug("Lock on line %s was open, now grabbed" % str(row))
+                        self.text.pop(row)
+                        self.text[row - 1][0].extend(line)
+                        self.dec_timer_indices(row)
+
+                        self.text[row - 1][2] = LineLockHolder(lock, src, row - 1, self)
+                        self.text[row - 1][2].start()
+                    elif prev_timer.author == src:
+                        LOG.debug("Line %s lock owner is editing" % str(row))
+                        self.text.pop(row)
+                        self.text[row - 1][0].extend(line)
+                        self.dec_timer_indices(row)
+
+                        prev_timer.poke()
+                    else:
+                        # should send notice to author that it couldn't do it
+                        # basically author needs to insert enter
+                        msg_newline = protocol.assemble_msg(INS_CHAR, row, len(prev_line), 'enter')
+                        src.send_update(msg_newline)
+                        # also send others notice that its locked
+                        return [blockmsg]
+
+                    # now needs to send blockmsg about previous row
+                    blockmsg_prev = protocol.assemble_msg(BLOCK_LINE, row, 0, 0)
+                    return [bs_msg, blockmsg_prev]
         else:
             char = txt[0]
-            (line,lock,timer) = (self.text[row][0],self.text[row][1],self.text[row][2])
             if lock.acquire(False):
                 LOG.debug("Lock on line %s was open, now grabbed" % str(row+1))
-                self.text[row][2] = TimedLock(lock,src,row,self)
+                self.text[row][2] = LineLockHolder(lock, src, row, self)
                 self.text[row][0].insert(col,char)
                 self.text[row][2].start()
-                return True
             elif timer.author == src:
                 LOG.debug("Line %s lock owner is editing" % str(row+1))
                 timer.poke()
                 self.text[row][0].insert(col,char)
-                return True
-        return False
+
+            char_msg = protocol.assemble_msg(INS_CHAR, row + 1, col, char)
+            blockmsg = protocol.assemble_msg(BLOCK_LINE, row + 1, 0, 0)
+            return [char_msg, blockmsg]
+
+        return []
 
     def inc_timer_indices(self,n):
         for i in range(n,len(self.text)):
             timer = self.text[i][2]
             if timer:
                 timer.lineno += 1
+
+    def dec_timer_indices(self, n):
+        for i in range(n, len(self.text)):
+            timer = self.text[i][2]
+            if timer:
+                timer.lineno -= 1
 
 
 
@@ -208,9 +277,9 @@ class Wordsmith(Stoppable):
 
     def displayText(self):
         while not self.shutdown:
-            print "-----"
-            print self.content()
-            print "-----"
+            #print "-----"
+            #print self.content()
+            #print "-----"
             sleep(4)
 
     def content(self):
@@ -263,12 +332,10 @@ class ClientHandler(Stoppable):
                         identifier, row, col, txt = protocol.parse_msg(msg)
 
                         if identifier == INS_CHAR:
-                            # (row,column,txt) = self.parse_message(msg)
-                            blockmsg = protocol.assemble_msg(BLOCK_LINE, row, col, 0)
-                            char_msg = protocol.assemble_msg(INS_CHAR, row, col, txt)
-                            if self.wordsmith.in_char(row - 1, col, txt, self):
-                                self.wordsmith.notify_all_clients(self, char_msg)  # send msg to others
-                                self.wordsmith.notify_all_clients(self, blockmsg)
+                            for resp_msg in self.wordsmith.in_char(row - 1, col, txt, self):
+                                self.wordsmith.notify_all_clients(self, resp_msg)  # send msg to others
+                            else:
+                                LOG.debug("Line %d was locked" % row)
                         elif identifier == GET_LINE:
                             line_content = self.wordsmith.get_line(row)
                             protocol.send_line(self.client_socket, row, line_content)
