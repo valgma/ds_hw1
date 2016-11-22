@@ -13,6 +13,8 @@ UNBLOCK_LINE = 'U'
 GET_LINE = 'G'
 INIT_TXT = 'S'
 RSP_OK = '0'
+GET_FILE = 'F'
+NO_FILE = 'N'
 
 def assemble_msg(identifier, row, col, content):
     content = str(content)
@@ -74,4 +76,11 @@ def send_block_msg(socket, row, blocking):
     identifier = BLOCK_LINE if blocking else UNBLOCK_LINE
     send_msg(socket, identifier, row, 0, 0)
 
+def get_filename(socket,filename):
+    fname = GET_FILE + filename
+    msg = pad_left(len(fname),IND_SIZE) + fname
+    socket.sendall(msg)
 
+def send_rspcode(socket,code):
+    msg = pad_left(len(code),IND_SIZE) + code
+    socket.sendall(msg)

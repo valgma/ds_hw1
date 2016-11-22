@@ -6,8 +6,9 @@ from socket import error as soc_error
 from threading import Thread
 
 from utils import make_logger
-from protocol import IND_SIZE, INS_CHAR, BLOCK_LINE, UNBLOCK_LINE, GET_LINE, INIT_TXT
+from protocol import IND_SIZE, INS_CHAR, BLOCK_LINE, UNBLOCK_LINE, GET_LINE, INIT_TXT, get_filename, NO_FILE, RSP_OK
 import protocol
+from sys import argv
 
 LOG = make_logger()
 
@@ -21,6 +22,7 @@ class Application(tk.Frame):
         self.createWidgets()
         self.connect(server)
         self.bindKeys()
+        self.req_file(argv[1])
         self.retrieve_initial_text()
 
         self.resp_handler = ClientRespHandler(self.text, self.sock)
@@ -104,6 +106,16 @@ class Application(tk.Frame):
             return
         LOG.info("Disconnected from server.")
         self.sock.close()
+
+    def req_file(self,filename):
+        protocol.get_filename(self.sock,filename)
+        rsp = protocol.retr_msg(self.sock)
+        if rsp.startswith(RSP_OK):
+            LOG.info("Server found the file!")
+        elif rsp.startswith(NO_FILE):
+            LOG.info("Server has no such file: %s" % filename)
+        else:
+            LOG.ERROR("Server responded weird to the filename request: %s" % rsp)
 
 
 class ClientRespHandler(Thread):
