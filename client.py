@@ -151,9 +151,8 @@ class ClientRespHandler(Thread):
             print "msg: " + message
 
     def toggle_block(self,lineno,blocking):
-        lineno = str(lineno)
-        line_begin = lineno+".0"
-        line_end = lineno+".end"
+        line_begin = "%d.0" %lineno
+        line_end = "%d.0" % (lineno+1)
         if blocking:
             self.text.tag_add("blocked",line_begin,line_end)
         else:
