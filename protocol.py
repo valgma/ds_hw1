@@ -76,11 +76,11 @@ def send_block_msg(socket, row, blocking):
     identifier = BLOCK_LINE if blocking else UNBLOCK_LINE
     send_msg(socket, identifier, row, 0, 0)
 
-def get_filename(socket,filename):
-    fname = GET_FILE + filename
-    msg = pad_left(len(fname),IND_SIZE) + fname
-    socket.sendall(msg)
+def send_ok(socket):
+    send_msg(socket, RSP_OK, 0,0,0)
 
-def send_rspcode(socket,code):
-    msg = pad_left(len(code),IND_SIZE) + code
-    socket.sendall(msg)
+def send_nofile(socket):
+    send_msg(socket, NO_FILE, 0,0,0)
+
+def get_filename(socket,filename):
+    send_msg(socket, GET_FILE, 0, 0, filename)

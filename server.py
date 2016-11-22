@@ -3,7 +3,7 @@ from socket import socket, AF_INET, SOCK_STREAM
 from socket import error as soc_error
 from time import sleep
 from utils import make_logger,  pad_left, pad_right
-from protocol import INS_CHAR, IND_SIZE, BLOCK_LINE, UNBLOCK_LINE, GET_LINE, INIT_TXT, GET_FILE, retr_msg, NO_FILE, RSP_OK, send_rspcode
+from protocol import INS_CHAR, IND_SIZE, BLOCK_LINE, UNBLOCK_LINE, GET_LINE, INIT_TXT, GET_FILE, retr_msg, send_ok, send_nofile
 import protocol
 from threading import Thread, Event, Lock
 import select
@@ -43,12 +43,12 @@ class Server:
                 if fname:
                     ws = self.load_wordsmith(fname)
                 if ws:
-                    send_rspcode(client_socket,RSP_OK)
+                    send_ok(client_socket)
                     c = ClientHandler(client_socket,source,ws)
                     self.handlers.append(c)
                     c.handle()
                 else:
-                    send_rspcode(client_socket,NO_FILE)
+                    send_nofile(client_socket)
                     client_socket.close()
                 sleep(1)
 
@@ -66,7 +66,7 @@ class Server:
     def ask_filename(self,socket):
         fname = retr_msg(socket)
         if fname.startswith(GET_FILE):
-            return fname[1:]
+            return fname[1 + 2*IND_SIZE :]
         else:
             LOG.error("Expected to get a filename request, instead got: %s",fname)
             return None
@@ -341,16 +341,12 @@ class Wordsmith(Stoppable):
 
 
 class ClientHandler(Stoppable):
-    shutdown = False
-    client_socket = None
-    client_addr = None
-    wordsmith = None
-
     def __init__(self,cs,ca,ws):
         Thread.__init__(self)
         self.client_socket = cs
         self.client_addr = ca
         self.wordsmith = ws
+        self.shutdown = False
         #self.send_initmsg()
         self.wordsmith.subscribers.append(self)
 
