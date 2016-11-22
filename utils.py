@@ -5,18 +5,11 @@ def make_logger():
     LOG = logging.getLogger()
     return LOG
 
-def pad_left(ind,size):
+def pad_left(ind, size):
+    ind = str(ind)
     return (size - len(ind))*"0" + ind
 
-def pad_right(msg,size):
+def pad_right(msg, size):
+    msg = str(msg)
     return msg + (size - len(msg))*"0"
 
-MESSAGE_SIZE = 128
-IND_SIZE = 32
-
-INS_CHAR = 'I'
-BLOCK_LINE = 'B'
-UNBLOCK_LINE = 'U'
-GET_LINE = 'G'
-
-RSP_OK = '0'

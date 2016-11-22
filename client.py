@@ -5,8 +5,10 @@ from socket import socket, AF_INET, SOCK_STREAM, SHUT_WR, SHUT_RD
 from socket import error as soc_error
 from threading import Thread
 
-from common import make_logger, INS_CHAR, IND_SIZE, BLOCK_LINE, UNBLOCK_LINE, GET_LINE
-from client_protocol import send_char, retr_text, ask_line
+from utils import make_logger
+from protocol import IND_SIZE, INS_CHAR, BLOCK_LINE, UNBLOCK_LINE, GET_LINE, INIT_TXT
+import protocol
+
 LOG = make_logger()
 
 class Application(tk.Frame):
@@ -19,7 +21,7 @@ class Application(tk.Frame):
         self.createWidgets()
         self.connect(server)
         self.bindKeys()
-        self.retrieveText()
+        self.retrieve_initial_text()
 
         self.resp_handler = ClientRespHandler(self.text, self.sock)
         self.resp_handler.setDaemon(True) # kill it when app closed
@@ -45,56 +47,48 @@ class Application(tk.Frame):
         self.text.grid()
 
     def key_press(self,event):
-        print "MUU key"
-        ind =  self.text.index(tk.INSERT).split(".")
-        row = ind[0]
-        col = ind[1]
+        row, col =  self.text.index(tk.INSERT).split(".")
         try:
-            in_char = event.char[0]
-            send_char(self.sock,row,col,event.char[0])
+            protocol.send_char(self.sock, row, col, event.char[0])
         except:
             return
 
     def enter_press(self,event):
-        print "ENTERERERER"
-        ind =  self.text.index(tk.INSERT).split(".")
-        row = ind[0]
-        col = ind[1]
+        row, col =  self.text.index(tk.INSERT).split(".")
+        print "ENTER at %s.%s" % (row, col)
         try:
-            send_char(self.sock,row,col,'enter')
+            protocol.send_char(self.sock,row,col,'enter')
         except:
             return
 
     def bs_press(self,event):
-        ind =  self.text.index(tk.INSERT).split(".")
-        row = ind[0]
-        col = ind[1]
+        row, col =  self.text.index(tk.INSERT).split(".")
         print "BACKSPACE at %s.%s" % (row, col)
         try:
             if row != '1' or col != '0':
-                send_char(self.sock,row,col,'backspace')
+                protocol.send_char(self.sock,row,col,'backspace')
         except:
             return
 
     def del_press(self,event):
-        ind =  self.text.index(tk.INSERT+'+1c').split(".")
-        row = ind[0]
-        col = ind[1]
+        row, col =  self.text.index(tk.INSERT+'+1c').split(".")
         print "DEL at %s.%s" % (row, col)
         try:
             if (row+'.'+col) != self.text.index(tk.END):
-                send_char(self.sock,row,col,'backspace')
+                protocol.send_char(self.sock,row,col,'backspace')
         except:
             return
 
-    def retrieveText(self):
-        text = retr_text(self.sock)
-        self.text.config(state=tk.NORMAL,bg="white")
-        self.text.delete(1.0,tk.END)
-        self.text.insert(0.0,text)
+    def retrieve_initial_text(self):
+        protocol.ask_initial_text(self.sock)
+        message = protocol.retr_msg(self.sock)
+        identifier, row, col, txt = protocol.parse_msg(message)
+        self.text.config(state=tk.NORMAL, bg="white")
+        self.text.delete(1.0, tk.END)
+        self.text.insert(0.0, txt)
         return
 
-    def connect(self,server):
+    def connect(self, server):
         LOG.info("Connecting to %s." % str(server))
         try:
             self.sock = socket(AF_INET,SOCK_STREAM)
@@ -124,17 +118,13 @@ class ClientRespHandler(Thread):
 
     def run(self):
         while True:
-            msg = retr_text(self.socket)
-            self.parse_message(msg)
+            msg = protocol.retr_msg(self.socket)
+            self.parse_and_handle_message(msg)
 
-    def parse_message(self, message):
-        identifier = message[0]
-        print "message:", message
+    def parse_and_handle_message(self, message):
+        identifier, row, col, txt = protocol.parse_msg(message)
+
         if identifier == INS_CHAR:
-            message = message[1:]
-            row = int(message[:IND_SIZE])
-            col = int(message[IND_SIZE:2*IND_SIZE])
-            txt = message[2*IND_SIZE:]
             if txt.startswith('backspace'):
                 if col > 0:
                     self.text.delete('%d.%d' % (row, col-1))
@@ -144,21 +134,16 @@ class ClientRespHandler(Thread):
             if txt.startswith('enter'):
                 char = '\n'
             else:
-                char = txt[0][0]
+                char = txt[0]
             print "received char %s in %s:%s" % (char,str(row),str(col))
             self.text.insert(str(row)+'.'+str(col), char)
         elif identifier == BLOCK_LINE or identifier == UNBLOCK_LINE:
-            message = message[1:]
-            lineno = str(int(message))
             blocking = identifier == BLOCK_LINE
-            self.toggle_block(lineno,blocking)
+            self.toggle_block(row, blocking)
             # ask from server new line
             if not blocking:
-                ask_line(self.socket, lineno)
+                protocol.ask_line(self.socket, row)
         elif identifier == GET_LINE:
-            message = message[1:]
-            row = int(message[:IND_SIZE])
-            txt = message[IND_SIZE:]
             self.text.delete('%d.0' % row, '%d.end' % row)
             self.text.insert('%d.0' % row, txt)
         else:
@@ -166,6 +151,7 @@ class ClientRespHandler(Thread):
             print "msg: " + message
 
     def toggle_block(self,lineno,blocking):
+        lineno = str(lineno)
         line_begin = lineno+".0"
         line_end = lineno+".end"
         if blocking:
