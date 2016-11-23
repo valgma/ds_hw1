@@ -1,8 +1,9 @@
 from stoppable import *
+from socket import error as soc_error, SHUT_RDWR
 import select
 from utils import make_logger
 import protocol
-from protocol import INS_CHAR, GET_LINE, INIT_TXT
+from protocol import INS_CHAR, GET_LINE, INIT_TXT, TERM_CONNECTION
 
 LOG = make_logger()
 
@@ -48,9 +49,10 @@ class ClientHandler(Stoppable):
                         client_shutdown = True
                 if self.shutdown or client_shutdown:
                     break
+        except soc_error as e:
+            LOG.debug('Lost connection with %s:%d' % self.client_addr)
         finally:
             self.disconnect()
-
 
     def disconnect(self):
         self.wordsmith.subscribers.remove(self)
@@ -59,3 +61,9 @@ class ClientHandler(Stoppable):
 
     def stop(self):
         self.shutdown = True
+
+    def kick_client_out(self):
+        LOG.debug('Kicking out client %s:%d' % self.client_addr)
+        protocol.send_msg(self.client_socket, TERM_CONNECTION, 0, 0, 0)
+        self.client_socket.shutdown(SHUT_RDWR)
+        self.disconnect()

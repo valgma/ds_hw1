@@ -28,7 +28,7 @@ class LineLockHolder(Thread):
                 line_content = self.wordsmith.get_line(self.lineno)
                 msg_line = protocol.assemble_msg(GET_LINE, self.lineno + 1, 0, line_content)
                 self.wordsmith.notify_all_clients(self.author, msg_line)
-
+                
                 self.linelock.release()
                 break
             else:

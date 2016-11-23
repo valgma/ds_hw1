@@ -15,6 +15,7 @@ INIT_TXT = 'S'
 RSP_OK = '0'
 GET_FILE = 'F'
 NO_FILE = 'N'
+TERM_CONNECTION = 'T'
 
 def assemble_msg(identifier, row, col, content):
     content = str(content)
@@ -43,10 +44,10 @@ def retr_msg(socket):
             return m
         else:
             return ""
-    except (soc_error, ValueError) as e:
-        print "Error when retrieving text from server"
-        print e
-        raise Exception("paha paha")
+    except ValueError:
+        return ""
+    except soc_error as e:
+        raise e
 
 def parse_msg(msg):
     print "parsing:" + msg
