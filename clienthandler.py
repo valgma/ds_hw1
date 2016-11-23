@@ -78,9 +78,6 @@ class ClientHandler(Thread):
         self.client_socket.close()
         LOG.debug("Terminating client %s:%d" % self.client_addr)
 
-    def stop(self):
-        self.shutdown = True
-
     def kick_client_out(self):
         LOG.debug('Kicking out client %s:%d' % self.client_addr)
         protocol.send_msg(self.client_socket, TERM_CONNECTION, 0, 0, 0)

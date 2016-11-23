@@ -69,6 +69,9 @@ class Wordsmith():
                 self.inc_timer_indices(row + 2)
 
                 return [enter_msg, blockmsg1, blockmsg2]
+            else:  # have to let author know that this enter wasn't accepted
+                msg_backspace = protocol.assemble_msg(INS_CHAR, row + 2, 0, 'backspace')
+                src.send_update(msg_backspace)
 
         elif txt.startswith('backspace'):
             bs_msg = protocol.assemble_msg(INS_CHAR, row + 1, col, 'backspace')
@@ -92,8 +95,6 @@ class Wordsmith():
                         del self.text[row]
                         self.text[row - 1][0].extend(line)
                         self.dec_timer_indices(row)
-                        LOG.debug('%d : %s' % (row, self.text[row-1][0]))
-                        LOG.debug('%d : %s' % (row+1, self.text[row][0]))
 
                         self.text[row - 1][2] = LineLockHolder(prev_lock, src, row - 1, self)
                         self.text[row - 1][2].start()
@@ -131,8 +132,6 @@ class Wordsmith():
                         del self.text[row]
                         self.text[row - 1][0].extend(line)
                         self.dec_timer_indices(row)
-                        LOG.debug('%d : %s' % (row, self.text[row-1][0]))
-                        LOG.debug('%d : %s' % (row+1, self.text[row][0]))
 
                         self.text[row - 1][2] = LineLockHolder(prev_lock, src, row - 1, self)
                         self.text[row - 1][2].start()
