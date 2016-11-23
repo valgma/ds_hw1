@@ -69,6 +69,7 @@ class Application(tk.Frame):
         self.target_remove = False
 
         if self.permissions != FILE_NOAUTH:
+            self.file_label.config(text=self.filename)
             self.resp_handler = ClientRespHandler(self.text, self.sock, self)
             self.resp_handler.setDaemon(True) # kill it when app closed
             self.resp_handler.start()
@@ -96,7 +97,10 @@ class Application(tk.Frame):
 
     def createWidgets(self):
         self.quitButton = tk.Button(self, text="Quit", command=self.quit)
-        self.quitButton.pack()
+        self.quitButton.pack(anchor=tk.N)
+
+        self.file_label = tk.Label(self, text='')
+        self.file_label.pack(anchor=tk.NW)
 
         # scrollbar
         scrollbar = tk.Scrollbar(self)
