@@ -76,10 +76,11 @@ class FileManager(Thread):
                 self.wordsmiths[fname] = ws
                 self.write_smith(ws)
                 LOG.debug("Granting privileges.")
-                self.ownerships["owners"][fname] = {}
-                self.ownerships["owners"][fname][username] = password
-                self.ownerships["editors"][fname] = {}
-                self.ownerships["editors"][fname][username] = password
+                self.ownerships[fname] = {}
+                self.ownerships[fname]["owners"] = {}
+                self.ownerships[fname]["owners"][username] = password
+                self.ownerships[fname]["editors"] = {}
+                self.ownerships[fname]["editors"][username] = password
                 self.store_ownership_dict()
                 permission = FILE_OWNER
         return (ws,permission)
@@ -89,7 +90,7 @@ class FileManager(Thread):
         perms = [("editors",FILE_EDITOR),("owners",FILE_OWNER)]
         for index,perm_bit in perms:
             try:
-                if self.ownerships[index][fname][username] == password:
+                if self.ownerships[fname][index][username] == password:
                     permission = perm_bit
             except KeyError:
                 break
