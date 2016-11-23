@@ -94,7 +94,7 @@ class Application(tk.Frame):
         self.quitButton = tk.Button(self, text="Quit", command=self.quit)
         self.quitButton.pack()
 
-        # scrollbar..really this complicated?
+        # scrollbar
         scrollbar = tk.Scrollbar(self)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
@@ -103,15 +103,9 @@ class Application(tk.Frame):
         self.text.insert("0.0","Retrieving content from server..")
 
         self.text.config(bg="#d6d8d8",state=tk.DISABLED)
-<<<<<<< HEAD
 
         self.text.pack()
         scrollbar.config(command=self.text.yview)
-
-
-=======
-        self.text.grid()
->>>>>>> 213709c75931c0e183a43cc9ee08d2737a943c45
 
 
     def key_press(self,event):
