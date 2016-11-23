@@ -37,13 +37,14 @@ class InitialDialog:
         map(lambda x:x.pack(padx=5),[self.namelabel, self.passwordlabel, self.listbox, self.filelabel, self.c, b])
 
     def submit(self):
-        if self.newfile.get():
-            self.parent.filename = self.filelabel.get()
-        else:
-            self.parent.filename = self.listbox.get(self.listbox.curselection()[0])
-        self.parent.password = self.passwordlabel.get()
-        self.parent.username = self.namelabel.get()
-        self.top.destroy()
+        if self.listbox.curselection() or self.newfile.get():
+            if self.newfile.get():
+                self.parent.filename = self.filelabel.get()
+            else:
+                self.parent.filename = self.listbox.get(self.listbox.curselection()[0])
+            self.parent.password = self.passwordlabel.get()
+            self.parent.username = self.namelabel.get()
+            self.top.destroy()
 
 class Application(tk.Frame):
     sock = None
@@ -58,16 +59,16 @@ class Application(tk.Frame):
         self.filename = ""
         self.username = ""
         self.password = ""
+        self.permissions = FILE_NOAUTH
         flist = self.recv_file_list()
         r = InitialDialog(self,flist)
         self.wait_window(r.top)
-
         self.send_identity(self.filename,self.username,self.password)
-        self.retrieve_initial_text()
-
-        self.resp_handler = ClientRespHandler(self.text, self.sock, self)
-        self.resp_handler.setDaemon(True) # kill it when app closed
-        self.resp_handler.start()
+        self.init_board()
+        if self.permissions != FILE_NOAUTH:
+            self.resp_handler = ClientRespHandler(self.text, self.sock, self)
+            self.resp_handler.setDaemon(True) # kill it when app closed
+            self.resp_handler.start()
 
     def recv_file_list(self):
         filecount_msg = protocol.retr_msg(self.sock)
@@ -99,8 +100,8 @@ class Application(tk.Frame):
         self.text.insert("0.0","Retrieving content from server..")
 
         self.text.config(bg="#d6d8d8",state=tk.DISABLED)
-
         self.text.grid()
+
 
     def key_press(self,event):
         row, col =  self.text.index(tk.INSERT).split(".")
@@ -135,13 +136,25 @@ class Application(tk.Frame):
         except:
             return
 
-    def retrieve_initial_text(self):
-        protocol.ask_initial_text(self.sock)
-        message = protocol.retr_msg(self.sock)
-        identifier, row, col, txt = protocol.parse_msg(message)
-        self.text.config(state=tk.NORMAL, bg="white")
-        self.text.delete(1.0, tk.END)
-        self.text.insert(0.0, txt)
+    def init_board(self):
+        print self.permissions
+        if self.permissions == FILE_NOAUTH:
+            no_auth_txt = "Authentication for file %s failed." % self.filename
+            self.text.config(state=tk.NORMAL, bg="white")
+            self.text.delete(1.0, tk.END)
+            self.text.insert(0.0, no_auth_txt)
+            self.text.config(bg="#d6d8d8",state=tk.DISABLED)
+        else:
+            protocol.ask_initial_text(self.sock)
+            message = protocol.retr_msg(self.sock)
+            identifier, row, col, txt = protocol.parse_msg(message)
+            self.text.config(state=tk.NORMAL, bg="white")
+            self.text.delete(1.0, tk.END)
+            self.text.insert(0.0, txt)
+
+        if self.permissions == FILE_OWNER:
+            print "we cool dawg"
+
         return
 
     def connect(self, server):
@@ -165,10 +178,14 @@ class Application(tk.Frame):
         protocol.send_user_info(self.sock,filename,username,password)
         rsp = protocol.retr_msg(self.sock)
         if rsp.startswith(FILE_OWNER):
+            self.permissions = rsp[0]
             LOG.debug("Owner access granted on %s." % filename)
         elif rsp.startswith(FILE_EDITOR):
+            self.permissions = rsp[0]
             LOG.debug("Editor access granted on %s." % filename)
         elif rsp.startswith(FILE_NOAUTH):
+            self.permissions = rsp[0] #Don't want to do this outside of the if's in case it's garbage
+            #I do a compare later if it's FILE_NOAUTH or not, so garbage would break that.
             LOG.debug("No access to file %s." % filename)
         else:
             LOG.error("Server responded weird to the client info transmission: %s" % rsp)
