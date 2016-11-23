@@ -38,6 +38,7 @@ class Wordsmith(Stoppable):
 
             new_row_content = self.text[row][0][col:]
             if lock.acquire(False):
+                LOG.debug("Lock on line %s was open, now grabbed" % str(row+1))
                 self.text[row][0] = self.text[row][0][:col]
 
                 new_lock = Lock()
@@ -48,12 +49,14 @@ class Wordsmith(Stoppable):
                 new_timer.start()
                 old_row_timer.start()
                 new_lock.acquire(False)
+                LOG.debug("Created new lock on line %s, now grabbed" % str(row+2))
 
                 self.text.insert(row + 1, [new_row_content,new_lock,new_timer])
                 self.inc_timer_indices(row + 2)
 
                 return [enter_msg, blockmsg1, blockmsg2]
             elif timer.author == src:
+                LOG.debug("Line %s lock owner is editing" % str(row+1))
                 self.text[row][0] = self.text[row][0][:col]
 
                 timer.poke()
@@ -61,6 +64,7 @@ class Wordsmith(Stoppable):
                 new_timer = LineLockHolder(new_lock, src, row + 1, self)
                 new_timer.start()
                 new_lock.acquire(False)
+                LOG.debug("Created new lock on line %s, now grabbed" % str(row+2))
 
                 self.text.insert(row + 1, [new_row_content,new_lock,new_timer])
                 self.inc_timer_indices(row + 2)
