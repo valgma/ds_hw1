@@ -71,7 +71,7 @@ class Application(tk.Frame):
         self.req_file(self.filename)
         self.retrieve_initial_text()
 
-        self.resp_handler = ClientRespHandler(self.text, self.sock)
+        self.resp_handler = ClientRespHandler(self.text, self.sock, self)
         self.resp_handler.setDaemon(True) # kill it when app closed
         self.resp_handler.start()
 
@@ -181,17 +181,22 @@ class Application(tk.Frame):
 class ClientRespHandler(Thread):
     text = None
     socket = None
+    application = None
 
-    def __init__(self, text, socket):
+    def __init__(self, text, socket, application):
         super(ClientRespHandler, self).__init__()
         self.text = text
         self.socket = socket
+        self.application = application
         print "Started new listener"
 
     def run(self):
-        while True:
-            msg = protocol.retr_msg(self.socket)
-            self.parse_and_handle_message(msg)
+        try:
+            while True:
+                msg = protocol.retr_msg(self.socket)
+                self.parse_and_handle_message(msg)
+        except soc_error:
+            return
 
     def parse_and_handle_message(self, message):
         identifier, row, col, txt = protocol.parse_msg(message)
@@ -215,6 +220,11 @@ class ClientRespHandler(Thread):
         elif identifier == GET_LINE:
             self.text.delete('%d.0' % row, '%d.end' % row)
             self.text.insert('%d.0' % row, txt)
+        elif identifier == TERM_CONNECTION:
+            LOG.debug('Got message to terminate connection')
+            self.text.insert(tk.END, '\n\nKICKED FROM SERVER')
+            self.text.config(state='disabled')
+            self.application.disconnect()
         else:
             print "unexpected!"
             print "msg: " + message
