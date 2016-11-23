@@ -41,9 +41,6 @@ class ClientHandler(Stoppable):
                         if identifier == INS_CHAR:
                             for resp_msg in self.wordsmith.in_char(row - 1, col, txt, self):
                                 self.wordsmith.notify_all_clients(self, resp_msg)  # send msg to others
-                        elif identifier == GET_LINE:
-                            line_content = self.wordsmith.get_line(row)
-                            protocol.send_line(self.client_socket, row, line_content)
                         elif identifier == INIT_TXT:
                             text = self.wordsmith.content()
                             protocol.send_initial_text(self.client_socket, text)

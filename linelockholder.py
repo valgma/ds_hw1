@@ -2,7 +2,7 @@ from threading import Thread, Lock, Event
 from utils import make_logger
 from time import sleep
 import protocol
-from protocol import UNBLOCK_LINE
+from protocol import UNBLOCK_LINE, GET_LINE
 LOG = make_logger()
 
 class LineLockHolder(Thread):
@@ -19,9 +19,16 @@ class LineLockHolder(Thread):
             sleep(4)
             if not self.stopped.is_set():
                 LOG.debug("Line lock released on %d." % (self.lineno + 1))
-                # msg = self.wordsmith.create_block_msg(str(self.lineno+1),False)
+
+                # send unblock message
                 msg = protocol.assemble_msg(UNBLOCK_LINE, self.lineno + 1, 0, 0)
                 self.wordsmith.notify_all_clients(self.author,msg)
+
+                # send line contect for clients to overwrite
+                line_content = self.wordsmith.get_line(self.lineno)
+                msg_line = protocol.assemble_msg(GET_LINE, self.lineno + 1, 0, line_content)
+                self.wordsmith.notify_all_clients(self.author, msg_line)
+
                 self.linelock.release()
                 break
             else:

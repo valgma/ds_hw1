@@ -152,9 +152,6 @@ class ClientRespHandler(Thread):
         elif identifier == BLOCK_LINE or identifier == UNBLOCK_LINE:
             blocking = identifier == BLOCK_LINE
             self.toggle_block(row, blocking)
-            # ask from server new line
-            if not blocking:
-                protocol.ask_line(self.socket, row)
         elif identifier == GET_LINE:
             self.text.delete('%d.0' % row, '%d.end' % row)
             self.text.insert('%d.0' % row, txt)
