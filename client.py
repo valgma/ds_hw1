@@ -27,7 +27,6 @@ class InitialDialog:
             self.listbox.insert(tk.END, item)
 
         self.filelabel = tk.Entry(top)
-        self.filelabel.pack(padx=5)
         self.filelabel.insert(0,"Insert new file name")
 
         self.newfile = tk.BooleanVar()
