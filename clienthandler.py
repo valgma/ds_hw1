@@ -3,25 +3,26 @@ from socket import error as soc_error, SHUT_RDWR
 import select
 from utils import make_logger
 import protocol
-from protocol import INS_CHAR, GET_LINE, INIT_TXT, TERM_CONNECTION, ADD_USER_PW, ADD_USER_NAME, REM_USER, FILE_OWNER
+from protocol import *
 
 LOG = make_logger()
 
 class ClientHandler(Thread):
-    def __init__(self,cs,ca,ws,un,perm):
+    def __init__(self,cs,ca,fm):
         Thread.__init__(self)
         self.client_socket = cs
         self.client_addr = ca
-        self.wordsmith = ws
+        self.fm = fm
+        self.wordsmith = None
         #self.send_initmsg()
-        self.wordsmith.subscribers.append(self)
-        self.permissions = perm
-        self.username = un
+        self.permissions = FILE_NOAUTH
+        self.username = ""
 
     def send_update(self, msg):
         protocol.forward_msg(self.client_socket, msg)
 
     def run(self):
+        self.process_client()
         self.__handle()
 
     def handle(self):
@@ -85,3 +86,36 @@ class ClientHandler(Thread):
         protocol.send_msg(self.client_socket, TERM_CONNECTION, 0, 0, 0)
         self.client_socket.shutdown(SHUT_RDWR)
         self.disconnect()
+
+
+    def send_filelist(self):
+        avail_files = self.fm.get_all_titles()
+        protocol.send_msg(self.client_socket,FILE_LIST,0,0,len(avail_files))
+        for f in avail_files:
+            protocol.send_msg(self.client_socket,FILE_ENTRY,0,0,f)
+
+    def process_client(self):
+        self.send_filelist()
+        fname,user_name,password = self.ask_filename()
+        ws = None
+        if fname and user_name and password:
+            self.wordsmith,self.permissions = self.fm.load_wordsmith(fname,user_name,password)
+        protocol.send_permissionbit(self.client_socket,self.permissions)
+        if not self.wordsmith:
+            self.disconnect()
+            return
+        self.wordsmith.subscribers.append(self)
+
+    def ask_filename(self):
+        user_info = []
+        fields = [("filename",USER_FILENAME),("username",USER_NAME),("password",USER_PW)]
+        for description,tag in fields:
+            msg = retr_msg(self.client_socket)
+            if msg.startswith(tag):
+                field_val = msg[1 + 2*IND_SIZE :]
+                LOG.debug("Retrieved value %s for field %s" % (field_val, description))
+                user_info.append(field_val)
+            else:
+                LOG.error("Expected to get a %s request, instead got: %s",(description,fname_msg))
+                return (None,None,None)
+        return tuple(user_info)
