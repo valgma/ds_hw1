@@ -131,8 +131,6 @@ class Wordsmith():
                         del self.text[row]
                         self.text[row - 1][0].extend(line)
                         self.dec_timer_indices(row)
-                        LOG.debug('%d : %s' % (row, self.text[row-1][0]))
-                        LOG.debug('%d : %s' % (row+1, self.text[row][0]))
 
                         self.text[row - 1][2] = LineLockHolder(prev_lock, src, row - 1, self)
                         self.text[row - 1][2].start()
