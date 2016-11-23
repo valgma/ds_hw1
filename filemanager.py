@@ -25,6 +25,10 @@ class FileManager(Thread):
         while not self.stopped.wait(60):
             for smith in self.wordsmiths.values():
                 self.write_smith(smith)
+        # to ensure ensure it...
+        while not self.stopped.wait(60):
+            for smith in self.wordsmiths.values():
+                self.write_smith(smith)
 
     def write_smith(self,smith):
         pth = os.path.join(self.folder,smith.filename)

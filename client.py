@@ -53,26 +53,30 @@ class Application(tk.Frame):
         tk.Frame.__init__(self,master)
         self.pack()
         self.createWidgets()
-        self.connect(server)
-        self.bindKeys()
-        self.filename = ""
-        self.username = ""
-        self.password = ""
-        self.permissions = FILE_NOAUTH
-        flist = self.recv_file_list()
-        r = InitialDialog(self,flist)
-        self.wait_window(r.top)
-        self.send_identity(self.filename,self.username,self.password)
-        self.init_board()
-        self.target_editor = ""
-        self.target_editor_password = ""
-        self.target_remove = False
+        try:
+            self.connect(server)
+            self.bindKeys()
+            self.filename = ""
+            self.username = ""
+            self.password = ""
+            self.permissions = FILE_NOAUTH
+            flist = self.recv_file_list()
+            r = InitialDialog(self,flist)
+            self.wait_window(r.top)
+            self.send_identity(self.filename,self.username,self.password)
+            self.init_board()
+            self.target_editor = ""
+            self.target_editor_password = ""
+            self.target_remove = False
 
-        if self.permissions != FILE_NOAUTH:
-            self.file_label.config(text=self.filename)
-            self.resp_handler = ClientRespHandler(self.text, self.sock, self)
-            self.resp_handler.setDaemon(True) # kill it when app closed
-            self.resp_handler.start()
+            if self.permissions != FILE_NOAUTH:
+                self.file_label.config(text=self.filename)
+                self.resp_handler = ClientRespHandler(self.text, self.sock, self)
+                self.resp_handler.setDaemon(True) # kill it when app closed
+                self.resp_handler.start()
+        except soc_error:
+            self.disconnect()
+            exit(1)
 
     def recv_file_list(self):
         filecount_msg = protocol.retr_msg(self.sock)
@@ -107,7 +111,7 @@ class Application(tk.Frame):
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.text = tk.Text(self, yscrollcommand=scrollbar.set)
-        self.text.tag_config("blocked", foreground="#ff0000", background="#000000")
+        self.text.tag_config("blocked", background="thistle")
         self.text.insert("0.0","Retrieving content from server..")
 
         self.text.config(bg="#d6d8d8",state=tk.DISABLED)
