@@ -69,6 +69,9 @@ class Wordsmith():
                 self.inc_timer_indices(row + 2)
 
                 return [enter_msg, blockmsg1, blockmsg2]
+            else:  # have to let author know that this enter wasn't accepted
+                msg_backspace = protocol.assemble_msg(INS_CHAR, row + 2, 0, 'backspace')
+                src.send_update(msg_backspace)
 
         elif txt.startswith('backspace'):
             bs_msg = protocol.assemble_msg(INS_CHAR, row + 1, col, 'backspace')
