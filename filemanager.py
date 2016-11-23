@@ -13,9 +13,8 @@ class FileManager(Thread):
         while not self.stopped.wait(60):
             for smith in self.smiths:
                 pth = os.path.join(self.folder,smith.filename)
-                f = open(pth,"w")
-                f.write(smith.content())
-                f.close()
+                with open(pth, 'w') as f:
+                    f.write(smith.content())
 
     def addSmith(self,ws):
         self.smiths.append(ws)
