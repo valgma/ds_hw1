@@ -90,3 +90,4 @@ ENV/
 
 #text stuff
 text/*
+ownerships.json
