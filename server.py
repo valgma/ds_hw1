@@ -3,7 +3,7 @@ from socket import socket, AF_INET, SOCK_STREAM
 from socket import error as soc_error
 from time import sleep
 from utils import make_logger,  pad_left, pad_right
-from protocol import INS_CHAR, IND_SIZE, BLOCK_LINE, UNBLOCK_LINE, GET_LINE, INIT_TXT, GET_FILE, retr_msg, send_ok, send_nofile
+from protocol import *
 import protocol
 from threading import Thread, Event, Lock
 import os
@@ -41,6 +41,10 @@ class Server:
             while 1:
                 LOG.info("Waiting for clients.")
                 client_socket,source = self.sock.accept()
+                avail_files = self.fm.get_all_titles()
+                protocol.send_msg(client_socket,FILE_LIST,0,0,len(avail_files))
+                for f in avail_files:
+                    protocol.send_msg(client_socket,FILE_ENTRY,0,0,f)
                 LOG.debug("New client connected from %s:%d" % source)
                 fname = self.ask_filename(client_socket)
                 ws = None

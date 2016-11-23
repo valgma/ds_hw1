@@ -6,11 +6,49 @@ from socket import error as soc_error
 from threading import Thread
 
 from utils import make_logger
-from protocol import IND_SIZE, INS_CHAR, BLOCK_LINE, UNBLOCK_LINE, GET_LINE, INIT_TXT, get_filename, NO_FILE, RSP_OK
+from protocol import *
 import protocol
 from sys import argv
 
 LOG = make_logger()
+class InitialDialog:
+    def __init__(self,parent,flist):
+        self.parent = parent
+        top = self.top = tk.Toplevel(parent)
+
+        self.namelabel = tk.Entry(top)
+        self.passwordlabel = tk.Entry(top,show="*")
+
+        self.namelabel.insert(0,"Insert your username")
+        self.passwordlabel.insert(0,"password")
+
+        self.namelabel.pack(padx=5)
+        self.passwordlabel.pack(padx=5)
+
+        self.listbox = tk.Listbox(top)
+        self.listbox.pack()
+        for item in flist:
+            self.listbox.insert(tk.END, item)
+
+        self.filelabel = tk.Entry(top)
+        self.filelabel.pack(padx=5)
+        self.filelabel.insert(0,"Insert new file name")
+
+        self.newfile = tk.BooleanVar()
+        self.c = tk.Checkbutton(top, text="New file", variable=self.newfile)
+        self.c.pack()
+
+        b = tk.Button(top,text="Submit", command=self.submit)
+        b.pack(pady=5)
+
+    def submit(self):
+        if self.newfile.get():
+            self.parent.filename = self.filelabel.get()
+        else:
+            self.parent.filename = self.listbox.get(self.listbox.curselection()[0])
+        self.parent.password = self.passwordlabel.get()
+        self.parent.username = self.namelabel.get()
+        self.top.destroy()
 
 class Application(tk.Frame):
     sock = None
@@ -22,12 +60,34 @@ class Application(tk.Frame):
         self.createWidgets()
         self.connect(server)
         self.bindKeys()
-        self.req_file(argv[1])
+        self.filename = ""
+        self.username = ""
+        self.password = ""
+        flist = self.recv_file_list()
+        r = InitialDialog(self,flist)
+        self.wait_window(r.top)
+        print self.filename
+
+        self.req_file(self.filename)
         self.retrieve_initial_text()
 
         self.resp_handler = ClientRespHandler(self.text, self.sock)
         self.resp_handler.setDaemon(True) # kill it when app closed
         self.resp_handler.start()
+
+    def recv_file_list(self):
+        filecount_msg = protocol.retr_msg(self.sock)
+        offset = 1 + 2*IND_SIZE
+        files = []
+        #TODO: Notify user when file list not retrieved
+        if filecount_msg.startswith(FILE_LIST):
+            filecount = int(filecount_msg[offset:])
+            for _ in range(filecount):
+                file_msg = protocol.retr_msg(self.sock)
+                if file_msg.startswith(FILE_ENTRY):
+                    fname = file_msg[offset:]
+                    files.append(fname)
+        return files
 
     def bindKeys(self):
         self.text.bind("<Key>",self.key_press)
@@ -115,7 +175,7 @@ class Application(tk.Frame):
         elif rsp.startswith(NO_FILE):
             LOG.info("Server has no such file: %s" % filename)
         else:
-            LOG.ERROR("Server responded weird to the filename request: %s" % rsp)
+            LOG.error("Server responded weird to the filename request: %s" % rsp)
 
 
 class ClientRespHandler(Thread):

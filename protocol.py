@@ -15,6 +15,8 @@ INIT_TXT = 'S'
 RSP_OK = '0'
 GET_FILE = 'F'
 NO_FILE = 'N'
+FILE_LIST = 'L'
+FILE_ENTRY = 'E'
 
 def assemble_msg(identifier, row, col, content):
     content = str(content)

@@ -18,3 +18,10 @@ class FileManager(Thread):
 
     def addSmith(self,ws):
         self.smiths.append(ws)
+
+    def get_all_titles(self):
+        msg = []
+        #for file in os.scandir(self.folder):
+        #    if file.is_file():
+        #        msg.add(str(file))
+        return os.listdir(self.folder)
