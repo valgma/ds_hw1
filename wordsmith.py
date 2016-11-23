@@ -7,10 +7,11 @@ from protocol import INS_CHAR, BLOCK_LINE
 LOG = make_logger()
 
 class Wordsmith():
-    def __init__(self,name):
+    def __init__(self,name,filemanager):
         self.filename = name
         self.subscribers = []
         self.text = [[[''],Lock(),None]]
+        self.fm = filemanager
 
 
     def set_content(self,content):
@@ -200,3 +201,13 @@ class Wordsmith():
         for handler in self.subscribers:
             if handler != author:
                 handler.send_update(msg)
+
+    def remove_editor(self,username):
+        for handler in self.subscribers[:]:
+            if handler.username == username:
+                #TODO: close connection
+                self.subscribers.remove(handler)
+        self.fm.remove_editor(self.filename,username)
+
+    def add_editor(self,username,password):
+        self.fm.add_editor(self.filename,username,password)

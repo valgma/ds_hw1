@@ -3,12 +3,12 @@ from socket import error as soc_error, SHUT_RDWR
 import select
 from utils import make_logger
 import protocol
-from protocol import INS_CHAR, GET_LINE, INIT_TXT, TERM_CONNECTION
+from protocol import INS_CHAR, GET_LINE, INIT_TXT, TERM_CONNECTION, ADD_USER_PW, ADD_USER_NAME, REM_USER, FILE_OWNER
 
 LOG = make_logger()
 
 class ClientHandler(Stoppable):
-    def __init__(self,cs,ca,ws):
+    def __init__(self,cs,ca,ws,un,perm):
         Thread.__init__(self)
         self.client_socket = cs
         self.client_addr = ca
@@ -16,6 +16,8 @@ class ClientHandler(Stoppable):
         self.shutdown = False
         #self.send_initmsg()
         self.wordsmith.subscribers.append(self)
+        self.permissions = perm
+        self.username = un
 
     def send_update(self, msg):
         protocol.forward_msg(self.client_socket, msg)
@@ -45,6 +47,18 @@ class ClientHandler(Stoppable):
                         elif identifier == INIT_TXT:
                             text = self.wordsmith.content()
                             protocol.send_initial_text(self.client_socket, text)
+                        elif identifier == REM_USER:
+                            if self.permissions == FILE_OWNER:
+                                LOG.debug("Removing editor %s from allowed list." % msg)
+                                self.wordsmith.remove_editor(txt)
+
+                        elif identifier == ADD_USER_NAME:
+                            pw_msg = protocol.retr_msg(socket)
+                            _, _, _, pw = protocol.parse_msg(pw_msg)
+                            if self.permissions == FILE_OWNER:
+                                LOG.debug("Adding editor %s with password %s to editors." % (txt,pw))
+                                self.wordsmith.add_editor(txt,pw)
+
                     else:
                         client_shutdown = True
                 if self.shutdown or client_shutdown:

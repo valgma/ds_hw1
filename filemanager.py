@@ -63,7 +63,7 @@ class FileManager(Thread):
                 f = open(pth,'r')
                 content = f.read()
                 f.close()
-                wsi = Wordsmith(fname)
+                wsi = Wordsmith(fname,self)
                 wsi.set_content(content)
                 self.wordsmiths[fname] = wsi
                 LOG.debug("Successfully loaded, checking permissions.")
@@ -72,7 +72,7 @@ class FileManager(Thread):
                     ws = wsi
             except IOError:
                 LOG.debug("No such file, creating wordsmith.")
-                ws = Wordsmith(fname)
+                ws = Wordsmith(fname,self)
                 self.wordsmiths[fname] = ws
                 self.write_smith(ws)
                 LOG.debug("Granting privileges.")
@@ -96,3 +96,16 @@ class FileManager(Thread):
                 break
         LOG.debug("Granted permission %c" % permission)
         return permission
+
+    def remove_editor(self,filename,username):
+        print self.ownerships[filename]["editors"].keys()
+        for i in self.ownerships[filename]["editors"].keys():
+            print i + " " + username + " " + str(username == i)
+        if username in self.ownerships[filename]["editors"].keys():
+            del self.ownerships[filename]["editors"][username]
+            self.store_ownership_dict()
+        print self.ownerships[filename]["editors"].keys()
+
+    def add_editor(self,filename,username,password):
+        self.ownerships[filename]["editors"][username] = password
+        self.store_ownership_dict()

@@ -85,7 +85,7 @@ class Server:
             ws,permission = self.fm.load_wordsmith(fname,user_name,password)
         protocol.send_permissionbit(client,permission)
         if ws:
-            c = ClientHandler(client,source,ws)
+            c = ClientHandler(client,source,ws,user_name,permission)
             self.handlers.append(c)
             c.handle()
         else:

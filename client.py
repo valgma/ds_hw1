@@ -66,6 +66,7 @@ class Application(tk.Frame):
         self.init_board()
         self.target_editor = ""
         self.target_editor_password = ""
+        self.target_remove = False
 
         if self.permissions != FILE_NOAUTH:
             self.resp_handler = ClientRespHandler(self.text, self.sock, self)
@@ -201,32 +202,41 @@ class Application(tk.Frame):
     def create_author_buttons(self):
         self.adjust_editors_button = tk.Button(self, text="Add/Remove Editor", command=self.adjust_editors)
         self.adjust_editors_button.pack()
-        a = EditorDialog()
-        self.wait_window(a)
 
     def adjust_editors(self):
-        print "add editor"
-
+        a = EditorDialog(self)
+        self.wait_window(a.top)
+        if self.target_remove:
+            protocol.send_msg(self.sock,REM_USER,0,0,self.target_editor)
+        else:
+            protocol.send_msg(self.sock,ADD_USER_NAME,0,0,self.target_editor)
+            protocol.send_msg(self.sock,ADD_USER_PW,0,0,self.target_editor_password)
 
 class EditorDialog:
     def __init__(self,parent):
         self.parent = parent
         top = self.top = tk.Toplevel(parent)
 
+        self.removeChoice = tk.BooleanVar()
+        self.removeChoice.set(False)
+
+        self.namelabel = tk.Entry(top)
         self.namelabel.insert(0,"Insert your username")
-        self.passwordlabel.insert(0,"password")
-        self.b = tk.BooleanVar()
 
         self.passwordlabel = tk.Entry(top)
         self.passwordlabel.insert(0,"Insert editor password")
 
-
         b = tk.Button(top,text="Submit", command=self.submit)
-        map(lambda x:x.pack(padx=5),[self.namelabel, self.passwordlabel])
+        self.add = tk.Radiobutton(top, text="Add Editor", variable=self.removeChoice, value=False)
+        self.remove = tk.Radiobutton(top, text="Remove Editor", variable=self.removeChoice, value=True)
+
+        map(lambda x:x.pack(padx=5),[self.namelabel, self.passwordlabel, self.add, self.remove, b])
 
     def submit(self):
+        self.parent.target_remove = self.removeChoice.get()
+        self.parent.target_editor = self.namelabel.get()
+        self.parent.target_editor_password = self.passwordlabel.get()
         self.top.destroy()
-
 
 class ClientRespHandler(Thread):
     text = None
