@@ -54,7 +54,6 @@ class Server:
                 else:
                     send_nofile(client_socket)
                     client_socket.close()
-                sleep(1)
 
         except KeyboardInterrupt:
             LOG.info("Received CTRL-C, shutting down..")

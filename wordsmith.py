@@ -90,15 +90,17 @@ class Wordsmith(Stoppable):
 
                     if prev_lock.acquire(False):
                         LOG.debug("Lock on line %s was open, now grabbed" % str(row))
-                        self.text.pop(row)
+                        del self.text[row]
                         self.text[row - 1][0].extend(line)
                         self.dec_timer_indices(row)
+                        LOG.debug('%d : %s' % (row, self.text[row-1][0]))
+                        LOG.debug('%d : %s' % (row+1, self.text[row][0]))
 
-                        self.text[row - 1][2] = LineLockHolder(lock, src, row - 1, self)
+                        self.text[row - 1][2] = LineLockHolder(prev_lock, src, row - 1, self)
                         self.text[row - 1][2].start()
                     elif prev_timer.author == src:
                         LOG.debug("Line %s lock owner is editing" % str(row))
-                        self.text.pop(row)
+                        del self.text[row]
                         self.text[row - 1][0].extend(line)
                         self.dec_timer_indices(row)
 
@@ -127,15 +129,17 @@ class Wordsmith(Stoppable):
 
                     if prev_lock.acquire(False):
                         LOG.debug("Lock on line %s was open, now grabbed" % str(row))
-                        self.text.pop(row)
+                        del self.text[row]
                         self.text[row - 1][0].extend(line)
                         self.dec_timer_indices(row)
+                        LOG.debug('%d : %s' % (row, self.text[row-1][0]))
+                        LOG.debug('%d : %s' % (row+1, self.text[row][0]))
 
-                        self.text[row - 1][2] = LineLockHolder(lock, src, row - 1, self)
+                        self.text[row - 1][2] = LineLockHolder(prev_lock, src, row - 1, self)
                         self.text[row - 1][2].start()
                     elif prev_timer.author == src:
                         LOG.debug("Line %s lock owner is editing" % str(row))
-                        self.text.pop(row)
+                        del self.text[row]
                         self.text[row - 1][0].extend(line)
                         self.dec_timer_indices(row)
 
