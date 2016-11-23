@@ -254,7 +254,11 @@ class ClientRespHandler(Thread):
         try:
             while True:
                 msg = protocol.retr_msg(self.socket)
-                self.parse_and_handle_message(msg)
+                if msg:
+                    self.parse_and_handle_message(msg)
+                else:
+                    self.shut_down()
+                    break
         except soc_error:
             return
 
@@ -296,6 +300,11 @@ class ClientRespHandler(Thread):
             self.text.tag_add("blocked",line_begin,line_end)
         else:
             self.text.tag_remove("blocked",line_begin, line_end)
+
+    def shut_down(self):
+        self.application.disconnect()
+        self.text.insert(tk.END, '\n\nSERVER SHUT DOWN')
+        self.text.config(state='disabled')
 
 
 
