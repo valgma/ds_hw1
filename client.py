@@ -51,7 +51,7 @@ class Application(tk.Frame):
 
     def __init__(self,server,master=None):
         tk.Frame.__init__(self,master)
-        self.grid()
+        self.pack()
         self.createWidgets()
         self.connect(server)
         self.bindKeys()
@@ -95,14 +95,20 @@ class Application(tk.Frame):
 
     def createWidgets(self):
         self.quitButton = tk.Button(self, text="Quit", command=self.quit)
-        self.quitButton.grid()
+        self.quitButton.pack()
 
-        self.text = tk.Text(self)
+        # scrollbar
+        scrollbar = tk.Scrollbar(self)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.text = tk.Text(self, yscrollcommand=scrollbar.set)
         self.text.tag_config("blocked", foreground="#ff0000", background="#000000")
         self.text.insert("0.0","Retrieving content from server..")
 
         self.text.config(bg="#d6d8d8",state=tk.DISABLED)
-        self.text.grid()
+
+        self.text.pack()
+        scrollbar.config(command=self.text.yview)
 
 
     def key_press(self,event):
