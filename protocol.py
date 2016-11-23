@@ -47,11 +47,11 @@ def assemble_msg(identifier, row, col, content):
 def send_msg(socket, identifier, row, col, content):
     msg = assemble_msg(identifier, row, col, content)
     socket.sendall(msg)
-    print 'sent:' + msg
+    #print 'sent:' + msg
 
 def forward_msg(socket, msg):
     socket.sendall(msg)
-    print 'sent:' + msg
+    #print 'sent:' + msg
 
 def retr_msg(socket):
     try:
@@ -67,12 +67,12 @@ def retr_msg(socket):
         raise e
 
 def parse_msg(msg):
-    print "parsing:" + msg
+    #print "parsing:" + msg
     ident = msg[0]
     row = int(msg[1 : IND_SIZE + 1])
     col = int(msg[IND_SIZE + 1 : 2 * IND_SIZE + 1])
     content = msg[2 * IND_SIZE + 1 :]
-    print "parse_res:%s | %d | %d | %s" % (ident, row, col, content)
+    #print "parse_res:%s | %d | %d | %s" % (ident, row, col, content)
     return ident, row, col, content
 
 def send_char(socket, row, col, char):

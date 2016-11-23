@@ -129,7 +129,7 @@ class Application(tk.Frame):
 
     def enter_press(self,event):
         row, col =  self.text.index(tk.INSERT).split(".")
-        print "ENTER at %s.%s" % (row, col)
+        #print "ENTER at %s.%s" % (row, col)
         try:
             protocol.send_char(self.sock,row,col,'enter')
         except:
@@ -137,7 +137,7 @@ class Application(tk.Frame):
 
     def bs_press(self,event):
         row, col =  self.text.index(tk.INSERT).split(".")
-        print "BACKSPACE at %s.%s" % (row, col)
+        #print "BACKSPACE at %s.%s" % (row, col)
         try:
             if row != '1' or col != '0':
                 protocol.send_char(self.sock,row,col,'backspace')
@@ -146,7 +146,7 @@ class Application(tk.Frame):
 
     def del_press(self,event):
         row, col =  self.text.index(tk.INSERT+'+1c').split(".")
-        print "DEL at %s.%s" % (row, col)
+        #print "DEL at %s.%s" % (row, col)
         try:
             if (row+'.'+col) != self.text.index(tk.END):
                 protocol.send_char(self.sock,row,col,'backspace')
@@ -154,7 +154,7 @@ class Application(tk.Frame):
             return
 
     def init_board(self):
-        print self.permissions
+        #print self.permissions
         if self.permissions == FILE_NOAUTH:
             no_auth_txt = "Authentication for file %s failed." % self.filename
             self.text.config(state=tk.NORMAL, bg="white")
@@ -256,7 +256,7 @@ class ClientRespHandler(Thread):
         self.text = text
         self.socket = socket
         self.application = application
-        print "Started new listener"
+        LOG.debug("Started new listener.")
 
     def run(self):
         try:
@@ -284,7 +284,7 @@ class ClientRespHandler(Thread):
                 char = '\n'
             else:
                 char = txt[0]
-            print "received char %s in %s:%s" % (char,str(row),str(col))
+            #print "received char %s in %s:%s" % (char,str(row),str(col))
             self.text.insert(str(row)+'.'+str(col), char)
         elif identifier == BLOCK_LINE or identifier == UNBLOCK_LINE:
             blocking = identifier == BLOCK_LINE
@@ -298,8 +298,7 @@ class ClientRespHandler(Thread):
             self.text.config(state='disabled')
             self.application.disconnect()
         else:
-            print "unexpected!"
-            print "msg: " + message
+            LOG.error("Unexpected message: %s" % message)
 
     def toggle_block(self,lineno,blocking):
         line_begin = "%d.0" %lineno
