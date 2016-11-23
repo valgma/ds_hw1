@@ -1,4 +1,3 @@
-from stoppable import *
 from linelockholder import *
 from utils import make_logger
 import protocol
