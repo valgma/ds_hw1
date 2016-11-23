@@ -157,19 +157,22 @@ class Wordsmith(Stoppable):
                     return [bs_msg, blockmsg_prev]
         else:
             char = txt[0]
+            char_msg = protocol.assemble_msg(INS_CHAR, row + 1, col, char)
+            blockmsg = protocol.assemble_msg(BLOCK_LINE, row + 1, 0, 0)
+
             if lock.acquire(False):
                 LOG.debug("Lock on line %s was open, now grabbed" % str(row+1))
                 self.text[row][2] = LineLockHolder(lock, src, row, self)
                 self.text[row][0].insert(col,char)
                 self.text[row][2].start()
+
+                return [char_msg, blockmsg]
             elif timer.author == src:
                 LOG.debug("Line %s lock owner is editing" % str(row+1))
                 timer.poke()
                 self.text[row][0].insert(col,char)
 
-            char_msg = protocol.assemble_msg(INS_CHAR, row + 1, col, char)
-            blockmsg = protocol.assemble_msg(BLOCK_LINE, row + 1, 0, 0)
-            return [char_msg, blockmsg]
+                return [char_msg, blockmsg]
 
         return []
 
@@ -205,7 +208,9 @@ class Wordsmith(Stoppable):
         return "\n".join(map(lambda x : "".join(x),rows))
 
     def get_line(self, lineno):
-        return ''.join(self.text[lineno-1][0])
+        if 0 <= lineno < len(self.text):
+            return ''.join(self.text[lineno][0])
+        return ''
 
     def notify_all_clients(self, author, msg):
         for handler in self.subscribers:
