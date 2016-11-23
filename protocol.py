@@ -30,6 +30,9 @@ USER_FILENAME = '1'
 USER_NAME = '2'
 USER_PW = '3'
 
+ADD_USER = 'A'
+REM_USER = 'R'
+
 def assemble_msg(identifier, row, col, content):
     content = str(content)
     msg_len = len(identifier) + 2 * IND_SIZE + len(content)

@@ -64,6 +64,9 @@ class Application(tk.Frame):
         self.wait_window(r.top)
         self.send_identity(self.filename,self.username,self.password)
         self.init_board()
+        self.target_editor = ""
+        self.target_editor_password = ""
+
         if self.permissions != FILE_NOAUTH:
             self.resp_handler = ClientRespHandler(self.text, self.sock, self)
             self.resp_handler.setDaemon(True) # kill it when app closed
@@ -152,7 +155,7 @@ class Application(tk.Frame):
             self.text.insert(0.0, txt)
 
         if self.permissions == FILE_OWNER:
-            print "we cool dawg"
+            self.create_author_buttons()
 
         return
 
@@ -188,6 +191,35 @@ class Application(tk.Frame):
             LOG.debug("No access to file %s." % filename)
         else:
             LOG.error("Server responded weird to the client info transmission: %s" % rsp)
+
+    def create_author_buttons(self):
+        self.adjust_editors_button = tk.Button(self, text="Add/Remove Editor", command=self.adjust_editors)
+        self.adjust_editors_button.pack()
+        a = EditorDialog()
+        self.wait_window(a)
+
+    def adjust_editors(self):
+        print "add editor"
+
+
+class EditorDialog:
+    def __init__(self,parent):
+        self.parent = parent
+        top = self.top = tk.Toplevel(parent)
+
+        self.namelabel.insert(0,"Insert your username")
+        self.passwordlabel.insert(0,"password")
+        self.b = tk.BooleanVar()
+
+        self.passwordlabel = tk.Entry(top)
+        self.passwordlabel.insert(0,"Insert editor password")
+
+
+        b = tk.Button(top,text="Submit", command=self.submit)
+        map(lambda x:x.pack(padx=5),[self.namelabel, self.passwordlabel])
+
+    def submit(self):
+        self.top.destroy()
 
 
 class ClientRespHandler(Thread):
