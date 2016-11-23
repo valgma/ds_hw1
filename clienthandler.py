@@ -7,13 +7,12 @@ from protocol import INS_CHAR, GET_LINE, INIT_TXT, TERM_CONNECTION, ADD_USER_PW,
 
 LOG = make_logger()
 
-class ClientHandler(Stoppable):
+class ClientHandler(Thread):
     def __init__(self,cs,ca,ws,un,perm):
         Thread.__init__(self)
         self.client_socket = cs
         self.client_addr = ca
         self.wordsmith = ws
-        self.shutdown = False
         #self.send_initmsg()
         self.wordsmith.subscribers.append(self)
         self.permissions = perm
@@ -61,7 +60,7 @@ class ClientHandler(Stoppable):
 
                     else:
                         client_shutdown = True
-                if self.shutdown or client_shutdown:
+                if client_shutdown:
                     break
         except soc_error as e:
             LOG.debug('Lost connection with %s:%d' % self.client_addr)
@@ -69,7 +68,12 @@ class ClientHandler(Stoppable):
             self.disconnect()
 
     def disconnect(self):
-        self.wordsmith.subscribers.remove(self)
+        if self in self.wordsmith.subscribers:
+            self.wordsmith.subscribers.remove(self)
+        try:
+            self.sock.fileno()
+        except:
+            return
         self.client_socket.close()
         LOG.debug("Terminating client %s:%d" % self.client_addr)
 

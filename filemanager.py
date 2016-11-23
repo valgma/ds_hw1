@@ -98,13 +98,9 @@ class FileManager(Thread):
         return permission
 
     def remove_editor(self,filename,username):
-        print self.ownerships[filename]["editors"].keys()
-        for i in self.ownerships[filename]["editors"].keys():
-            print i + " " + username + " " + str(username == i)
         if username in self.ownerships[filename]["editors"].keys():
             del self.ownerships[filename]["editors"][username]
             self.store_ownership_dict()
-        print self.ownerships[filename]["editors"].keys()
 
     def add_editor(self,filename,username,password):
         self.ownerships[filename]["editors"][username] = password

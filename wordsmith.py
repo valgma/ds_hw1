@@ -206,7 +206,7 @@ class Wordsmith():
         for handler in self.subscribers[:]:
             if handler.username == username:
                 #TODO: close connection
-                self.subscribers.remove(handler)
+                handler.kick_client_out()
         self.fm.remove_editor(self.filename,username)
 
     def add_editor(self,username,password):

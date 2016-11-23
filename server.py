@@ -48,11 +48,13 @@ class Server:
             self.disconnect()
         finally:
             self.stopFlag.set()
+            LOG.debug("Kicking everyone out.")
+            map(lambda x: x.kick_client_out, self.handlers)
+            self.fm.store_ownership_dict()
             self.disconnect()
-            LOG.debug("Telling the threads to kill themselves.")
-            map(lambda x: x.stop(), self.handlers)
             LOG.debug("Trying to join threads.")
-            map(lambda x: x.join(), self.handlers)
+            #map(lambda x: x.join(), self.handlers)
+
 
     def ask_filename(self,socket):
         user_info = []
@@ -86,6 +88,7 @@ class Server:
         protocol.send_permissionbit(client,permission)
         if ws:
             c = ClientHandler(client,source,ws,user_name,permission)
+            c.setDaemon(True)
             self.handlers.append(c)
             c.handle()
         else:
