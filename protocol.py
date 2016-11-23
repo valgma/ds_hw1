@@ -7,17 +7,28 @@ from socket import error as soc_error
 
 # MESSAGE_SIZE = 128
 IND_SIZE = 32
+
+RSP_OK = '0'
+
 INS_CHAR = 'I'
 BLOCK_LINE = 'B'
 UNBLOCK_LINE = 'U'
 GET_LINE = 'G'
+
 INIT_TXT = 'S'
-RSP_OK = '0'
-GET_FILE = 'F'
-NO_FILE = 'N'
+
 FILE_LIST = 'L'
 FILE_ENTRY = 'E'
+
 TERM_CONNECTION = 'T'
+
+FILE_OWNER = 'O'
+FILE_EDITOR = 'E'
+FILE_NOAUTH = 'X'
+
+USER_FILENAME = '1'
+USER_NAME = '2'
+USER_PW = '3'
 
 def assemble_msg(identifier, row, col, content):
     content = str(content)
@@ -79,11 +90,10 @@ def send_block_msg(socket, row, blocking):
     identifier = BLOCK_LINE if blocking else UNBLOCK_LINE
     send_msg(socket, identifier, row, 0, 0)
 
-def send_ok(socket):
-    send_msg(socket, RSP_OK, 0,0,0)
+def send_permissionbit(socket,bit):
+    send_msg(socket, bit, 0,0,0)
 
-def send_nofile(socket):
-    send_msg(socket, NO_FILE, 0,0,0)
-
-def get_filename(socket,filename):
-    send_msg(socket, GET_FILE, 0, 0, filename)
+def send_user_info(socket,filename,username,password):
+    send_msg(socket, USER_FILENAME, 0, 0, filename)
+    send_msg(socket, USER_NAME, 0, 0, username)
+    send_msg(socket, USER_PW, 0, 0, password)

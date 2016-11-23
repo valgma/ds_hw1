@@ -6,9 +6,8 @@ from protocol import INS_CHAR, BLOCK_LINE
 
 LOG = make_logger()
 
-class Wordsmith(Stoppable):
+class Wordsmith():
     def __init__(self,name):
-        Thread.__init__(self)
         self.filename = name
         self.subscribers = []
         self.text = [[[''],Lock(),None]]
@@ -187,21 +186,6 @@ class Wordsmith(Stoppable):
             timer = self.text[i][2]
             if timer:
                 timer.lineno -= 1
-
-
-
-    def run(self):
-        self.displayText()
-
-    def displayText(self):
-        while not self.shutdown:
-            print "-----"
-            print self.content()
-            print "//Subscribers:"
-            print len(self.subscribers)
-            print "-----"
-
-            sleep(4)
 
     def content(self):
         rows = map(lambda x: x[0],self.text)

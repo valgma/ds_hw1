@@ -22,11 +22,7 @@ class InitialDialog:
         self.namelabel.insert(0,"Insert your username")
         self.passwordlabel.insert(0,"password")
 
-        self.namelabel.pack(padx=5)
-        self.passwordlabel.pack(padx=5)
-
         self.listbox = tk.Listbox(top)
-        self.listbox.pack()
         for item in flist:
             self.listbox.insert(tk.END, item)
 
@@ -36,10 +32,9 @@ class InitialDialog:
 
         self.newfile = tk.BooleanVar()
         self.c = tk.Checkbutton(top, text="New file", variable=self.newfile)
-        self.c.pack()
 
         b = tk.Button(top,text="Submit", command=self.submit)
-        b.pack(pady=5)
+        map(lambda x:x.pack(padx=5),[self.namelabel, self.passwordlabel, self.listbox, self.filelabel, self.c, b])
 
     def submit(self):
         if self.newfile.get():
@@ -66,9 +61,8 @@ class Application(tk.Frame):
         flist = self.recv_file_list()
         r = InitialDialog(self,flist)
         self.wait_window(r.top)
-        print self.filename
 
-        self.req_file(self.filename)
+        self.send_identity(self.filename,self.username,self.password)
         self.retrieve_initial_text()
 
         self.resp_handler = ClientRespHandler(self.text, self.sock, self)
@@ -167,15 +161,17 @@ class Application(tk.Frame):
         LOG.info("Disconnected from server.")
         self.sock.close()
 
-    def req_file(self,filename):
-        protocol.get_filename(self.sock,filename)
+    def send_identity(self,filename,username,password):
+        protocol.send_user_info(self.sock,filename,username,password)
         rsp = protocol.retr_msg(self.sock)
-        if rsp.startswith(RSP_OK):
-            LOG.info("Server found the file!")
-        elif rsp.startswith(NO_FILE):
-            LOG.info("Server has no such file: %s" % filename)
+        if rsp.startswith(FILE_OWNER):
+            LOG.debug("Owner access granted on %s." % filename)
+        elif rsp.startswith(FILE_EDITOR):
+            LOG.debug("Editor access granted on %s." % filename)
+        elif rsp.startswith(FILE_NOAUTH):
+            LOG.debug("No access to file %s." % filename)
         else:
-            LOG.error("Server responded weird to the filename request: %s" % rsp)
+            LOG.error("Server responded weird to the client info transmission: %s" % rsp)
 
 
 class ClientRespHandler(Thread):

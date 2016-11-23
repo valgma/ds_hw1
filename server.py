@@ -17,10 +17,10 @@ TEXT_FOLDER = 'text'
 
 class Server:
     sock = socket(AF_INET,SOCK_STREAM)
-    wordsmiths = {}
     handlers = []
     fm = None
     stopFlag = None
+    authors = {}
 
     def __init__(self,server):
         self.stopFlag = Event()
@@ -41,24 +41,8 @@ class Server:
             while 1:
                 LOG.info("Waiting for clients.")
                 client_socket,source = self.sock.accept()
-                avail_files = self.fm.get_all_titles()
-                protocol.send_msg(client_socket,FILE_LIST,0,0,len(avail_files))
-                for f in avail_files:
-                    protocol.send_msg(client_socket,FILE_ENTRY,0,0,f)
                 LOG.debug("New client connected from %s:%d" % source)
-                fname = self.ask_filename(client_socket)
-                ws = None
-                if fname:
-                    ws = self.load_wordsmith(fname)
-                if ws:
-                    send_ok(client_socket)
-                    c = ClientHandler(client_socket,source,ws)
-                    self.handlers.append(c)
-                    c.handle()
-                else:
-                    send_nofile(client_socket)
-                    client_socket.close()
-
+                self.process_client(client_socket,source)
         except KeyboardInterrupt:
             LOG.info("Received CTRL-C, shutting down..")
             self.disconnect()
@@ -71,31 +55,46 @@ class Server:
             map(lambda x: x.join(), self.handlers)
 
     def ask_filename(self,socket):
-        fname = retr_msg(socket)
-        if fname.startswith(GET_FILE):
-            return fname[1 + 2*IND_SIZE :]
-        else:
-            LOG.error("Expected to get a filename request, instead got: %s",fname)
-            return None
+        user_info = []
+        fields = [("filename",USER_FILENAME),("username",USER_NAME),("password",USER_PW)]
+        for description,tag in fields:
+            msg = retr_msg(socket)
+            if msg.startswith(tag):
+                field_val = msg[1 + 2*IND_SIZE :]
+                LOG.debug("Retrieved value %s for field %s" % (field_val, description))
+                user_info.append(field_val)
+            else:
+                LOG.error("Expected to get a %s request, instead got: %s",(description,fname_msg))
+                return (None,None,None)
+        return tuple(user_info)
 
     def disconnect(self):
         self.sock.close()
 
-    def load_wordsmith(self,fname):
-        if fname in self.wordsmiths.keys():
-            return self.wordsmiths[fname]
-        try:
-            pth = os.path.join(TEXT_FOLDER,fname)
-            f = open(pth,'r')
-            content = f.read()
-            f.close()
-            ws = Wordsmith(fname)
-            self.fm.addSmith(ws)
-            ws.set_content(content)
-            #ws.start() #TODO: we only use this for debugging..
-            self.wordsmiths[fname] = ws
-            return ws
-        except IOError:
-            return None
+    def send_filelist(self,client):
+        avail_files = self.fm.get_all_titles()
+        protocol.send_msg(client,FILE_LIST,0,0,len(avail_files))
+        for f in avail_files:
+            protocol.send_msg(client,FILE_ENTRY,0,0,f)
+
+    def process_client(self,client,source):
+        self.send_filelist(client)
+        fname,user_name,password = self.ask_filename(client)
+        ws = None
+        if fname and user_name and password:
+            ws,permission = self.fm.load_wordsmith(fname,user_name,password)
+        protocol.send_permissionbit(client,permission)
+        if ws:
+            c = ClientHandler(client,source,ws)
+            self.handlers.append(c)
+            c.handle()
+        else:
+            client.close()
+
+
+
+
+
+
 
 serv = Server(("127.0.0.1",7777))
