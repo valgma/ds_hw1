@@ -69,7 +69,7 @@ class ClientHandler(Thread):
             self.disconnect()
 
     def disconnect(self):
-        if self in self.wordsmith.subscribers:
+        if self.wordsmith and self in self.wordsmith.subscribers:
             self.wordsmith.subscribers.remove(self)
         try:
             self.sock.fileno()
