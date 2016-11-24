@@ -1,15 +1,9 @@
 #! /usr/bin/env python
 from socket import socket, AF_INET, SOCK_STREAM
-from socket import error as soc_error
-from time import sleep
-from utils import make_logger,  pad_left, pad_right
-from protocol import *
-import protocol
-from threading import Thread, Event, Lock
-import os
+from sys import argv
 
-from filemanager import *
 from clienthandler import *
+from filemanager import *
 from wordsmith import *
 
 LOG = make_logger()
@@ -64,10 +58,8 @@ class Server:
         self.sock.close()
 
 
-
-
-
-
-
-
-serv = Server(("127.0.0.1",7777))
+if __name__ == '__main__':
+    server_addr = protocol.DEFAULT_SERVER
+    if len(argv) > 1:
+        server_addr = argv[1], int(argv[2])
+    serv = Server(server_addr)

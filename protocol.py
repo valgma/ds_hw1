@@ -5,6 +5,8 @@ from socket import error as soc_error
 # field leng: IND_SIZE | 1 | IND_SIZE | IND_SIZE | MSG_LEN - (2*IND_SIZE + 1)
 # receive works so that first read IND_SIZE -> get rest of len from that -> read the rest
 
+DEFAULT_SERVER = ("127.0.0.1", 7777)
+
 # MESSAGE_SIZE = 128
 IND_SIZE = 32
 

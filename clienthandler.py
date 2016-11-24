@@ -1,9 +1,10 @@
-from threading import Thread
-from socket import error as soc_error, SHUT_RDWR
 import select
-from utils import make_logger
+from socket import SHUT_RDWR
+from threading import Thread
+
 import protocol
 from protocol import *
+from utils import make_logger
 
 LOG = make_logger()
 
@@ -113,6 +114,6 @@ class ClientHandler(Thread):
                 LOG.debug("Retrieved value %s for field %s" % (field_val, description))
                 user_info.append(field_val)
             else:
-                LOG.error("Expected to get a %s request, instead got: %s",(description,fname_msg))
+                LOG.error("Expected to get a %s request, instead got: %s",(description,tag))
                 return (None,None,None)
         return tuple(user_info)

@@ -1,8 +1,10 @@
-from threading import Thread, Lock, Event
-from utils import make_logger
+from threading import Thread, Event
 from time import sleep
+
 import protocol
 from protocol import UNBLOCK_LINE, GET_LINE
+from utils import make_logger
+
 LOG = make_logger()
 
 class LineLockHolder(Thread):

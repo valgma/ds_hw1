@@ -314,9 +314,12 @@ class ClientRespHandler(Thread):
         self.text.config(state='disabled')
 
 
+if __name__ == '__main__':
+    server = protocol.DEFAULT_SERVER
+    if len(argv) > 1:
+        server = argv[1], int(argv[2])
 
-server = ("127.0.0.1", 7777)
-app = Application(server)
-app.master.title("Collaborative text editor")
-app.mainloop()
-app.disconnect()
+    app = Application(server)
+    app.master.title("Collaborative text editor")
+    app.mainloop()
+    app.disconnect()
