@@ -5,3 +5,6 @@
 * Raul-Martin Rebane
 * Lembit Valgma
 * Hiie Vill
+
+## Startup
+First run server.py. Then client.py to connect. Both can have 2 command line arguments: ip port_nr
