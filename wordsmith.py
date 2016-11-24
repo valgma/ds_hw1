@@ -111,6 +111,8 @@ class Wordsmith():
                         msg_newline = protocol.assemble_msg(INS_CHAR, row, len(prev_line), 'enter')
                         src.send_update(msg_newline)
                         # also send others notice that its locked
+                        self.text[row][2] = LineLockHolder(lock, src, row, self)
+                        self.text[row][2].start()
                         return [blockmsg]
 
                     # now needs to send blockmsg about previous row
@@ -148,6 +150,7 @@ class Wordsmith():
                         msg_newline = protocol.assemble_msg(INS_CHAR, row, len(prev_line), 'enter')
                         src.send_update(msg_newline)
                         # also send others notice that its locked
+                        timer.poke()
                         return [blockmsg]
 
                     # now needs to send blockmsg about previous row
